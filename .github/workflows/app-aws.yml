@@ -1,0 +1,29 @@
+name: AWS Application Delivery
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - app/**
+
+concurrency:
+  group: app-aws-production
+  cancel-in-progress: false
+
+jobs:
+
+  build:
+    uses: ./.github/workflows/reusable/app-build.yml
+
+  security:
+    uses: ./.github/workflows/reusable/security-scan.yml
+
+  deploy:
+    needs:
+      - build
+      - security
+
+    uses: ./.github/workflows/reusable/app-deploy.yml
+    with:
+      vm-ip: ${{ vars.AWS_VM_IP }}

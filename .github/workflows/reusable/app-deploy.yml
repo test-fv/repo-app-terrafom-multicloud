@@ -1,0 +1,73 @@
+name: Reusable App Deploy
+
+on:
+  workflow_call:
+
+    inputs:
+
+      cloud-provider:
+        required: true
+        type: string
+
+      vm-ip:
+        required: true
+        type: string
+
+      registry-url:
+        required: true
+        type: string
+
+      registry-username:
+        required: true
+        type: string
+
+      registry-password:
+        required: true
+        type: string
+
+concurrency:
+  group: deploy-${{ inputs.cloud-provider }}
+  cancel-in-progress: false
+
+jobs:
+
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    env:
+
+      CLOUD_PROVIDER: ${{ inputs.cloud-provider }}
+
+      REGISTRY_URL: ${{ inputs.registry-url }}
+
+      REGISTRY_USERNAME: ${{ inputs.registry-username }}
+
+      REGISTRY_PASSWORD: ${{ inputs.registry-password }}
+
+      IMAGE_NAME: myapp
+
+      IMAGE_TAG: latest
+
+      CONTAINER_NAME: myapp
+
+    steps:
+
+      - name: Deploy Application
+
+        uses: appleboy/ssh-action@v1.0.3
+
+        with:
+
+          host: ${{ inputs.vm-ip }}
+
+          username: azureuser
+
+          key: ${{ secrets.VM_SSH_KEY }}
+
+          envs: CLOUD_PROVIDER,REGISTRY_URL,REGISTRY_USERNAME,REGISTRY_PASSWORD,IMAGE_NAME,IMAGE_TAG,CONTAINER_NAME
+
+          script: |
+            chmod +x ~/app/contracts/runtime/deploy.sh
+
+            ~/app/contracts/runtime/deploy.sh

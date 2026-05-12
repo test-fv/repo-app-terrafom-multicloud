@@ -1,0 +1,33 @@
+name: Reusable Terraform Plan
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+
+jobs:
+  terraform-plan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.working-directory }}
+        run: terraform init -reconfigure -input=false
+
+      - name: Terraform Format Check
+        working-directory: ${{ inputs.working-directory }}
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        working-directory: ${{ inputs.working-directory }}
+        run: terraform validate
+
+      - name: Terraform Plan
+        working-directory: ${{ inputs.working-directory }}
+        run: terraform plan -out=tfplan -input=false

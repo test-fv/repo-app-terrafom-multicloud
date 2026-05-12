@@ -1,0 +1,112 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: pr-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  code-quality:
+    name: Build Test Sonar
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Build and Unit Tests
+        run: mvn clean verify
+
+      - name: Sonar Scan
+        run: |
+          mvn sonar:sonar \
+            -Dsonar.projectKey=portfolioappterraform \
+            -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
+            -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
+            -Dsonar.qualitygate.wait=true
+
+      - name: Run Trivy FS Scan
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: table
+          exit-code: 1
+          ignore-unfixed: true
+
+
+  terraform-plan:
+    name: Terraform PR Plan
+    runs-on: ubuntu-latest
+
+    env:
+      TF_VAR_location: ${{ secrets.TF_VAR_location }}
+      TF_VAR_rg_name: ${{ secrets.TF_VAR_rg_name }}
+      TF_VAR_vm_name: ${{ secrets.TF_VAR_vm_name }}
+      TF_VAR_vm_size: ${{ secrets.TF_VAR_vm_size }}
+      TF_VAR_admin_username: ${{ secrets.TF_VAR_admin_username }}
+      TF_VAR_acr_name: ${{ secrets.TF_VAR_acr_name }}
+      TF_VAR_ssh_public_key: ${{ secrets.TF_VAR_ssh_public_key }}
+      TF_VAR_project: ${{ secrets.TF_VAR_project }}
+
+    defaults:
+      run:
+        working-directory: terraform/environments/azure/dev
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Setup TFLint
+        uses: terraform-linters/setup-tflint@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Terraform Init
+        run: terraform init -reconfigure -input=false
+
+      - name: Terraform Format Check
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Init TFLint
+        run: tflint --init
+
+      - name: Run TFLint
+        run: tflint --recursive
+
+      - name: Run tfsec
+        uses: aquasecurity/tfsec-action@v1.0.3
+
+      - name: Terraform Plan Preview
+        run: terraform plan -out=tfplan -no-color -input=false
+
+      - name: Upload Plan Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr-tfplan
+          path: terraform/environments/azure/dev/tfplan

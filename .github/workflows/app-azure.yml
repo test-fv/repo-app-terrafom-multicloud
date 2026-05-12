@@ -1,0 +1,25 @@
+name: Azure Application Delivery
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - app/**
+
+jobs:
+
+  build:
+    uses: ./.github/workflows/reusable/app-build.yml
+
+  security:
+    uses: ./.github/workflows/reusable/security-scan.yml
+
+  deploy:
+    needs:
+      - build
+      - security
+
+    uses: ./.github/workflows/reusable/app-deploy.yml
+    with:
+      vm-ip: ${{ vars.AZURE_VM_IP }}

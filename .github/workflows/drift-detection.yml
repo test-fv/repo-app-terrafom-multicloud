@@ -1,0 +1,41 @@
+name: Drift Detection
+
+on:
+  schedule:
+    - cron: '0 6 * * *'
+
+jobs:
+  drift-check:
+    runs-on: ubuntu-latest
+
+    env:
+      TF_VAR_location: ${{ secrets.TF_VAR_location }}
+      TF_VAR_rg_name: ${{ secrets.TF_VAR_rg_name }}
+      TF_VAR_vm_name: ${{ secrets.TF_VAR_vm_name }}
+      TF_VAR_vm_size: ${{ secrets.TF_VAR_vm_size }}
+      TF_VAR_admin_username: ${{ secrets.TF_VAR_admin_username }}
+      TF_VAR_acr_name: ${{ secrets.TF_VAR_acr_name }}
+      TF_VAR_ssh_public_key: ${{ secrets.TF_VAR_ssh_public_key }}
+      TF_VAR_project: ${{ secrets.TF_VAR_project }}
+
+    defaults:
+      run:
+        working-directory: terraform/environments/azure/prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Terraform Init
+        run: terraform init -reconfigure -input=false
+
+      - name: Drift Detection
+        run: terraform plan -detailed-exitcode -input=false

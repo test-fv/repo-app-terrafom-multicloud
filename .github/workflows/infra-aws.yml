@@ -1,0 +1,19 @@
+name: AWS Terraform Infrastructure
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'terraform/**'
+
+concurrency:
+  group: terraform-aws-production
+  cancel-in-progress: false
+
+jobs:
+
+  terraform-plan:
+    uses: ./.github/workflows/reusable/terraform-plan.yml
+    with:
+      working-directory: terraform/environments/aws/prod

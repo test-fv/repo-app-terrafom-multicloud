@@ -1,0 +1,45 @@
+name: Reusable Terraform Outputs
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        required: true
+        type: string
+
+jobs:
+  outputs:
+    runs-on: ubuntu-latest
+
+    outputs:
+      vm_ip: ${{ steps.outputs.outputs.vm_ip }}
+      registry_url: ${{ steps.outputs.outputs.registry_url }}
+      registry_username: ${{ steps.outputs.outputs.registry_username }}
+      registry_password: ${{ steps.outputs.outputs.registry_password }}
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.8.5
+
+      - name: Terraform Init
+        working-directory: ${{ inputs.working-directory }}
+        run: terraform init -input=false
+
+      - id: outputs
+        working-directory: ${{ inputs.working-directory }}
+
+        run: |
+          set -e
+
+          REGISTRY_PASSWORD=$(terraform output -raw registry_password)
+
+          echo "::add-mask::$REGISTRY_PASSWORD"
+
+          echo "vm_ip=$(terraform output -raw vm_ip)" >> $GITHUB_OUTPUT
+          echo "registry_url=$(terraform output -raw registry_url)" >> $GITHUB_OUTPUT
+          echo "registry_username=$(terraform output -raw registry_username)" >> $GITHUB_OUTPUT
+          echo "registry_password=$REGISTRY_PASSWORD" >> $GITHUB_OUTPUT
