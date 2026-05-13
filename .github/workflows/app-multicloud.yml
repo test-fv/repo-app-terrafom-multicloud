@@ -2,24 +2,32 @@ name: Multi Cloud Application Delivery
 
 on:
   workflow_dispatch:
+
     inputs:
+
       cloud:
         required: true
         type: choice
+
         options:
           - azure
           - aws
 
 concurrency:
-  group: app-${{ github.event.inputs.cloud }}-prod
+  group: app-${{ github.event.inputs.cloud }}
+
   cancel-in-progress: false
 
 jobs:
 
   build:
+
     uses: ./.github/workflows/reusable/app-build.yml
 
+    secrets: inherit
+
   outputs:
+
     needs: build
 
     uses: ./.github/workflows/reusable/read-outputs.yml
@@ -27,12 +35,20 @@ jobs:
     with:
       working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
 
+      cloud-provider: ${{ github.event.inputs.cloud }}
+
+    secrets: inherit
+
   security:
+
     needs: build
 
     uses: ./.github/workflows/reusable/security-scan.yml
 
+    secrets: inherit
+
   deploy:
+
     needs:
       - build
       - outputs
@@ -44,6 +60,7 @@ jobs:
     uses: ./.github/workflows/reusable/app-deploy.yml
 
     with:
+
       cloud-provider: ${{ github.event.inputs.cloud }}
 
       vm-ip: ${{ needs.outputs.outputs.vm_ip }}

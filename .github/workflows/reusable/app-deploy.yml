@@ -25,10 +25,6 @@ on:
         required: true
         type: string
 
-concurrency:
-  group: deploy-${{ inputs.cloud-provider }}
-  cancel-in-progress: false
-
 jobs:
 
   deploy:

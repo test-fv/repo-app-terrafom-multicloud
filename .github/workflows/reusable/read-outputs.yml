@@ -2,19 +2,30 @@ name: Reusable Terraform Outputs
 
 on:
   workflow_call:
+
     inputs:
+
+      cloud-provider:
+        required: true
+        type: string
+
       working-directory:
         required: true
         type: string
 
 jobs:
+
   outputs:
+
     runs-on: ubuntu-latest
 
     outputs:
       vm_ip: ${{ steps.outputs.outputs.vm_ip }}
+
       registry_url: ${{ steps.outputs.outputs.registry_url }}
+
       registry_username: ${{ steps.outputs.outputs.registry_username }}
+
       registry_password: ${{ steps.outputs.outputs.registry_password }}
 
     steps:
@@ -22,24 +33,28 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: hashicorp/setup-terraform@v3
+
+      - name: Azure Login
+
+        if: inputs.cloud-provider == 'azure'
+
+        uses: azure/login@v2
+
         with:
-          terraform_version: 1.8.5
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Terraform Init
+
         working-directory: ${{ inputs.working-directory }}
-        run: terraform init -input=false
+
+        run: terraform init -reconfigure -input=false
 
       - id: outputs
+
         working-directory: ${{ inputs.working-directory }}
 
         run: |
-          set -e
-
-          REGISTRY_PASSWORD=$(terraform output -raw registry_password)
-
-          echo "::add-mask::$REGISTRY_PASSWORD"
-
           echo "vm_ip=$(terraform output -raw vm_ip)" >> $GITHUB_OUTPUT
           echo "registry_url=$(terraform output -raw registry_url)" >> $GITHUB_OUTPUT
           echo "registry_username=$(terraform output -raw registry_username)" >> $GITHUB_OUTPUT
-          echo "registry_password=$REGISTRY_PASSWORD" >> $GITHUB_OUTPUT
+          echo "registry_password=$(terraform output -raw registry_password)" >> $GITHUB_OUTPUT

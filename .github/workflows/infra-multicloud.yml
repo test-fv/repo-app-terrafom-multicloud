@@ -1,0 +1,58 @@
+name: Terraform Infrastructure
+
+on:
+  workflow_dispatch:
+
+    inputs:
+
+      cloud:
+        required: true
+        type: choice
+
+        options:
+          - azure
+          - aws
+
+      environment:
+        required: true
+        type: choice
+
+        options:
+          - dev
+          - prod
+
+concurrency:
+  group: terraform-${{ github.event.inputs.cloud }}-${{ github.event.inputs.environment }}
+
+  cancel-in-progress: false
+
+jobs:
+
+  plan:
+
+    uses: ./.github/workflows/reusable/terraform-plan.yml
+
+    with:
+
+      cloud-provider: ${{ github.event.inputs.cloud }}
+
+      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
+
+    secrets: inherit
+
+  apply:
+
+    needs: plan
+
+    environment:
+      name: production
+
+    uses: ./.github/workflows/reusable/terraform-apply.yml
+
+    with:
+
+      cloud-provider: ${{ github.event.inputs.cloud }}
+
+      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
+
+    secrets: inherit
