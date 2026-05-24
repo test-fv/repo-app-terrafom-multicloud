@@ -13,6 +13,10 @@ on:
         required: true
         type: string
 
+      ssh-user:
+        required: true
+        type: string
+
       registry-url:
         required: true
         type: string
@@ -57,7 +61,7 @@ jobs:
 
           host: ${{ inputs.vm-ip }}
 
-          username: azureuser
+          username: ${{ inputs.ssh-user }}
 
           key: ${{ secrets.VM_SSH_KEY }}
 

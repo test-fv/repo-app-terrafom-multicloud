@@ -18,3 +18,4 @@ output "registry_password" {
 output "ssh_user" {
   value = "ubuntu"
 }
+

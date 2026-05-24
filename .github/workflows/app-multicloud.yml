@@ -8,34 +8,35 @@ on:
       cloud:
         required: true
         type: choice
-
         options:
           - azure
           - aws
 
 concurrency:
   group: app-${{ github.event.inputs.cloud }}
-
   cancel-in-progress: false
 
 jobs:
 
-  build:
-
-    uses: ./.github/workflows/reusable/app-build.yml
-
-    secrets: inherit
-
   outputs:
-
-    needs: build
 
     uses: ./.github/workflows/reusable/read-outputs.yml
 
     with:
       working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
-
       cloud-provider: ${{ github.event.inputs.cloud }}
+
+    secrets: inherit
+
+  build:
+
+    needs: outputs
+
+    uses: ./.github/workflows/reusable/app-build.yml
+
+    with:
+      cloud-provider: ${{ github.event.inputs.cloud }}
+      registry-url: ${{ needs.outputs.outputs.registry_url }}
 
     secrets: inherit
 
@@ -50,8 +51,8 @@ jobs:
   deploy:
 
     needs:
-      - build
       - outputs
+      - build
       - security
 
     environment:
@@ -64,6 +65,8 @@ jobs:
       cloud-provider: ${{ github.event.inputs.cloud }}
 
       vm-ip: ${{ needs.outputs.outputs.vm_ip }}
+
+      ssh-user: ${{ needs.outputs.outputs.ssh_user }}
 
       registry-url: ${{ needs.outputs.outputs.registry_url }}
 

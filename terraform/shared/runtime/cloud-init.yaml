@@ -9,6 +9,12 @@ packages:
   - git
   - unzip
   - awscli
+  
+ bootcmd:
+  - mkdir -p /home/${admin_username}/app/contracts/runtime
+  - mkdir -p /home/${admin_username}/app/contracts/observability
+  - mkdir -p /home/${admin_username}/app/contracts/security
+  - mkdir -p /home/${admin_username}/app/scripts/runtime/providers 
 
 write_files:
 
@@ -41,11 +47,5 @@ runcmd:
   - systemctl start docker
 
   - usermod -aG docker ${admin_username}
-
-  - mkdir -p /home/${admin_username}/app/contracts/runtime
-  - mkdir -p /home/${admin_username}/app/contracts/observability
-  - mkdir -p /home/${admin_username}/app/contracts/security
-
-  - mkdir -p /home/${admin_username}/app/scripts/runtime/providers
 
   - chown -R ${admin_username}:${admin_username} /home/${admin_username}/app
