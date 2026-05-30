@@ -30,7 +30,7 @@ jobs:
 
   plan:
 
-    uses: ./.github/workflows/reusable/terraform-plan.yml
+    uses: ./.github/workflows/terraform-plan.yml
 
     with:
 
@@ -44,7 +44,7 @@ jobs:
 
     needs: plan
 
-    uses: ./.github/workflows/reusable/terraform-apply.yml
+    uses: ./.github/workflows/terraform-apply.yml
 
     with:
 
