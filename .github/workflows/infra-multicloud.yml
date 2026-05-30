@@ -44,9 +44,6 @@ jobs:
 
     needs: plan
 
-    environment:
-      name: ${{ github.event.inputs.environment }}
-
     uses: ./.github/workflows/reusable/terraform-apply.yml
 
     with:

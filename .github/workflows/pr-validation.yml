@@ -36,12 +36,12 @@ jobs:
       - name: Sonar Scan
         run: |
           mvn sonar:sonar \
-            -Dsonar.projectKey=portfolioappterraform \
+            -Dsonar.projectKey=portfolio-multicloud \
             -Dsonar.host.url=${{ secrets.SONAR_HOST_URL }} \
             -Dsonar.login=${{ secrets.SONAR_TOKEN }} \
             -Dsonar.qualitygate.wait=true
 
-      - name: Run Trivy FS Scan
+      - name: Run Trivy FS Scankey
         uses: aquasecurity/trivy-action@master
         with:
           scan-type: fs
@@ -70,7 +70,7 @@ jobs:
         working-directory: terraform/environments/azure/dev
 
     steps:
-      - name: Checkout
+      - name:key Checkout
         uses: actions/checkout@v4
 
       - name: Setup Terraform
