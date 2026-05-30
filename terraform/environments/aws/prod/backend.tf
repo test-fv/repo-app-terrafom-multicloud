@@ -2,7 +2,7 @@ terraform {
 
   backend "s3" {
 
-    bucket         = "terraform-state-prod"
+    bucket         = "terraform-state-fabian-multicloud"
     key            = "aws-prod.tfstate"
     region         = "us-east-1"
 
