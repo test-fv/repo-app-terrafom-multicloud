@@ -11,12 +11,36 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: maven
+
+      - name: Build Application
+        working-directory: app
+        run: mvn clean verify
+
+      - name: SonarQube Scan
+        working-directory: app
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL }}
+        run: |
+          mvn sonar:sonar \
+            -Dsonar.projectKey=portfolio-multicloud \
+            -Dsonar.projectName=portfolio-multicloud \
+            -Dsonar.host.url=$SONAR_HOST_URL \
+            -Dsonar.token=$SONAR_TOKEN
 
       - name: Run Trivy Filesystem Scan
-
         uses: aquasecurity/trivy-action@0.20.0
-
         with:
           scan-type: fs
           scan-ref: .
+          format: table
+          exit-code: 0

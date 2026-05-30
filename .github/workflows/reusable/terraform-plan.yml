@@ -19,6 +19,17 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+
+      TF_VAR_instance_type: ${{ vars.TF_VAR_instance_type }}
+
+      TF_VAR_repository_name: ${{ vars.TF_VAR_repository_name }}
+
+      TF_VAR_aws_region: ${{ vars.TF_VAR_aws_region }}
+
+      TF_VAR_ssh_public_key: ${{ secrets.TF_VAR_ssh_public_key }}
+
+
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
