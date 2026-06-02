@@ -55,7 +55,8 @@ jobs:
     name: Terraform PR Plan
     runs-on: ubuntu-latest
 
-    env:
+    env:name:
+
       TF_VAR_location: ${{ secrets.TF_VAR_location }}
       TF_VAR_rg_name: ${{ secrets.TF_VAR_rg_name }}
       TF_VAR_vm_name: ${{ secrets.TF_VAR_vm_name }}
@@ -70,7 +71,7 @@ jobs:
         working-directory: terraform/environments/azure/dev
 
     steps:
-      - name:key Checkout
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Terraform
