@@ -72,3 +72,4 @@ jobs:
       registry-password: ${{ needs.outputs.outputs.registry_password }}
 
     secrets: inherit
+    
