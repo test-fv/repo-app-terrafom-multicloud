@@ -49,30 +49,19 @@ jobs:
     secrets: inherit
 
   deploy:
-
     needs:
       - outputs
       - build
       - security
 
-      
-    environment:
-      name: production
-
     uses: ./.github/workflows/app-deploy.yml
 
     with:
-
       cloud-provider: ${{ github.event.inputs.cloud }}
-
       vm-ip: ${{ needs.outputs.outputs.vm_ip }}
-
       ssh-user: ${{ needs.outputs.outputs.ssh_user }}
-
       registry-url: ${{ needs.outputs.outputs.registry_url }}
-
       registry-username: ${{ needs.outputs.outputs.registry_username }}
-
       registry-password: ${{ needs.outputs.outputs.registry_password }}
 
-    secrets: inherit
+    secrets: inherit   
