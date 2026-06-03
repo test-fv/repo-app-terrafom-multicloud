@@ -55,7 +55,7 @@ jobs:
     name: Terraform PR Plan
     runs-on: ubuntu-latest
 
-    env:name:
+    env:
 
       TF_VAR_location: ${{ secrets.TF_VAR_location }}
       TF_VAR_rg_name: ${{ secrets.TF_VAR_rg_name }}
