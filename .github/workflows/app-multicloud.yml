@@ -58,7 +58,6 @@ jobs:
     uses: ./.github/workflows/app-deploy.yml
 
     with:
-      
 
       cloud-provider: ${{ github.event.inputs.cloud }}
 
@@ -73,4 +72,6 @@ jobs:
       registry-password: ${{ needs.outputs.outputs.registry_password }}
 
     secrets: inherit
+
+
     
