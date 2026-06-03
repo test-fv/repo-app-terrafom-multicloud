@@ -59,6 +59,7 @@ jobs:
 
     with:
 
+      
       cloud-provider: ${{ github.event.inputs.cloud }}
 
       vm-ip: ${{ needs.outputs.outputs.vm_ip }}
@@ -75,3 +76,5 @@ jobs:
 
 
     
+
+
