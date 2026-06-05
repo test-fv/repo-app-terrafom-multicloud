@@ -60,3 +60,5 @@ jobs:
       working-directory: terraform/environments/aws/dev
 
     secrets: inherit
+
+    
