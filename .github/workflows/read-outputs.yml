@@ -1,3 +1,4 @@
+```yaml
 name: Reusable Terraform Outputs
 
 on:
@@ -45,9 +46,11 @@ jobs:
 
     steps:
 
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
       - name: Azure Login
         if: inputs.cloud-provider == 'azure'
@@ -67,7 +70,8 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: terraform init -reconfigure -input=false
 
-      - id: outputs
+      - name: Read Terraform Outputs
+        id: outputs
         working-directory: ${{ inputs.working-directory }}
         run: |
           echo "vm_ip=$(terraform output -raw vm_ip)" >> $GITHUB_OUTPUT
@@ -75,3 +79,15 @@ jobs:
           echo "registry_username=$(terraform output -raw registry_username)" >> $GITHUB_OUTPUT
           echo "registry_password=$(terraform output -raw registry_password)" >> $GITHUB_OUTPUT
           echo "ssh_user=$(terraform output -raw ssh_user)" >> $GITHUB_OUTPUT
+
+      - name: Debug Outputs
+        run: |
+          echo "======================================="
+          echo "Terraform Outputs"
+          echo "======================================="
+          echo "VM_IP=${{ steps.outputs.outputs.vm_ip }}"
+          echo "REGISTRY_URL=${{ steps.outputs.outputs.registry_url }}"
+          echo "REGISTRY_USERNAME=${{ steps.outputs.outputs.registry_username }}"
+          echo "SSH_USER=${{ steps.outputs.outputs.ssh_user }}"
+          echo "======================================="
+```
