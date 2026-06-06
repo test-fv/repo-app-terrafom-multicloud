@@ -1,3 +1,4 @@
+```yaml
 name: Multi Cloud Application Delivery
 
 on:
@@ -55,7 +56,6 @@ jobs:
       - build
       - security
 
-      
     uses: ./.github/workflows/app-deploy.yml
 
     with:
@@ -73,3 +73,4 @@ jobs:
       registry-password: ${{ needs.outputs.outputs.registry_password }}
 
     secrets: inherit
+```
