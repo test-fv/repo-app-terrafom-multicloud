@@ -13,6 +13,23 @@ on:
         required: true
         type: string
 
+    outputs:
+
+      vm_ip:
+        value: ${{ jobs.outputs.outputs.vm_ip }}
+
+      registry_url:
+        value: ${{ jobs.outputs.outputs.registry_url }}
+
+      registry_username:
+        value: ${{ jobs.outputs.outputs.registry_username }}
+
+      registry_password:
+        value: ${{ jobs.outputs.outputs.registry_password }}
+
+      ssh_user:
+        value: ${{ jobs.outputs.outputs.ssh_user }}
+
 jobs:
 
   outputs:
