@@ -1,11 +1,8 @@
-```yaml
 name: Reusable Terraform Outputs
 
 on:
   workflow_call:
-
     inputs:
-
       cloud-provider:
         required: true
         type: string
@@ -15,7 +12,6 @@ on:
         type: string
 
     outputs:
-
       vm_ip:
         value: ${{ jobs.outputs.outputs.vm_ip }}
 
@@ -32,9 +28,7 @@ on:
         value: ${{ jobs.outputs.outputs.ssh_user }}
 
 jobs:
-
   outputs:
-
     runs-on: ubuntu-latest
 
     outputs:
@@ -45,7 +39,6 @@ jobs:
       ssh_user: ${{ steps.outputs.outputs.ssh_user }}
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -90,4 +83,3 @@ jobs:
           echo "REGISTRY_USERNAME=${{ steps.outputs.outputs.registry_username }}"
           echo "SSH_USER=${{ steps.outputs.outputs.ssh_user }}"
           echo "======================================="
-```
