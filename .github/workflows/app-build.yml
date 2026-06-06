@@ -21,6 +21,9 @@ jobs:
 
     steps:
 
+      # =========================
+      # CHECKOUT
+      # =========================
       - uses: actions/checkout@v4
 
       # =========================
@@ -64,22 +67,31 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       # =========================
-      # VALIDACIÓN REGISTRY (CRÍTICO)
+      # 🔥 DEBUG CRÍTICO (TU PROBLEMA ACTUAL)
+      # =========================
+      - name: Debug Registry URL
+        run: |
+          echo "=============================="
+          echo "CLOUD: ${{ inputs.cloud-provider }}"
+          echo "REGISTRY RECEIVED: ${{ inputs.registry-url }}"
+          echo "=============================="
+
+      # =========================
+      # VALIDACIÓN REGISTRY (EVITA DOCKER HUB FALLBACK)
       # =========================
       - name: Validate Registry URL
-        if: inputs.cloud-provider == 'aws'
         run: |
           set -e
-
-          echo "Registry received: ${{ inputs.registry-url }}"
 
           if [ -z "${{ inputs.registry-url }}" ]; then
             echo "❌ ERROR: registry-url is empty"
             exit 1
           fi
 
+          echo "✔ Registry OK: ${{ inputs.registry-url }}"
+
       # =========================
-      # AWS ECR LOGIN FIXED
+      # AWS ECR LOGIN
       # =========================
       - name: AWS ECR Login
         if: inputs.cloud-provider == 'aws'

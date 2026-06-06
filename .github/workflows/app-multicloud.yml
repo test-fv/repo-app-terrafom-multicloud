@@ -40,6 +40,9 @@ jobs:
 
     secrets: inherit
 
+    # 🔥 DEBUG IMPORTANTE
+    # (ojo: esto se ejecuta dentro del reusable workflow, no aquí directamente)
+
   security:
 
     needs: build
