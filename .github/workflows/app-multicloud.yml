@@ -69,9 +69,6 @@ jobs:
 
       registry-username: ${{ needs.outputs.outputs.registry_username }}
 
-      registry-password: ${{ needs.outputs.outputs.registry_password }}
-
     secrets: inherit
 
 
-    

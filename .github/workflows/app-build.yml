@@ -23,6 +23,9 @@ jobs:
 
       - uses: actions/checkout@v4
 
+      # =========================
+      # JAVA BUILD
+      # =========================
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -34,6 +37,9 @@ jobs:
         working-directory: app
         run: mvn clean package
 
+      # =========================
+      # AZURE LOGIN
+      # =========================
       - name: Azure Login
         if: inputs.cloud-provider == 'azure'
         uses: azure/login@v2
@@ -43,8 +49,12 @@ jobs:
       - name: Azure Container Registry Login
         if: inputs.cloud-provider == 'azure'
         run: |
+          set -e
           az acr login --name ${{ secrets.TF_VAR_acr_name }}
 
+      # =========================
+      # AWS CONFIG
+      # =========================
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
@@ -53,22 +63,52 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # =========================
+      # VALIDACIÓN REGISTRY (CRÍTICO)
+      # =========================
+      - name: Validate Registry URL
+        if: inputs.cloud-provider == 'aws'
+        run: |
+          set -e
+
+          echo "Registry received: ${{ inputs.registry-url }}"
+
+          if [ -z "${{ inputs.registry-url }}" ]; then
+            echo "❌ ERROR: registry-url is empty"
+            exit 1
+          fi
+
+      # =========================
+      # AWS ECR LOGIN FIXED
+      # =========================
       - name: AWS ECR Login
         if: inputs.cloud-provider == 'aws'
         run: |
-          aws ecr get-login-password \
+          set -e
+
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
           | docker login \
             --username AWS \
             --password-stdin \
             ${{ inputs.registry-url }}
 
+      # =========================
+      # DOCKER BUILD
+      # =========================
       - name: Docker Build
         run: |
+          set -e
+
           docker build \
             -t ${{ inputs.registry-url }}/myapp:latest \
             ./app
 
+      # =========================
+      # DOCKER PUSH
+      # =========================
       - name: Docker Push
         run: |
+          set -e
+
           docker push \
             ${{ inputs.registry-url }}/myapp:latest
