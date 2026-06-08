@@ -6,6 +6,7 @@ on:
       cloud-provider:
         required: true
         type: string
+
       working-directory:
         required: true
         type: string
@@ -53,6 +54,20 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: terraform init -reconfigure -input=false
 
+      # 🔥 DEBUG CRÍTICO DE TERRAFORM
+      - name: DEBUG TERRAFORM OUTPUTS (FULL INSPECTION)
+        working-directory: ${{ inputs.working-directory }}
+        run: |
+          echo "=============================="
+          echo "TERRAFORM OUTPUT RAW"
+          echo "=============================="
+          terraform output || true
+
+          echo "=============================="
+          echo "TERRAFORM OUTPUT JSON"
+          echo "=============================="
+          terraform output -json || true
+
       - name: Read Terraform Outputs
         id: outputs
         working-directory: ${{ inputs.working-directory }}
@@ -66,10 +81,14 @@ jobs:
           REGISTRY_USERNAME=$(terraform output -raw registry_username 2>/dev/null || true)
           REGISTRY_PASSWORD=$(terraform output -raw registry_password 2>/dev/null || true)
 
-          echo "DEBUG registry_server=[$REGISTRY_SERVER]"
+          echo "=============================="
+          echo "PARSED VALUES"
+          echo "=============================="
+          echo "registry_server=[$REGISTRY_SERVER]"
+          echo "vm_ip=[$VM_IP]"
 
           if [ -z "$REGISTRY_SERVER" ]; then
-            echo "❌ registry_server vacío (NO existe en terraform state o output)"
+            echo "❌ registry_server sigue vacío desde Terraform"
             exit 1
           fi
 
