@@ -32,11 +32,11 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      vm_ip: ${{ steps.outputs.outputs.vm_ip }}
-      registry_url: ${{ steps.outputs.outputs.registry_url }}
-      registry_username: ${{ steps.outputs.outputs.registry_username }}
-      registry_password: ${{ steps.outputs.outputs.registry_password }}
-      ssh_user: ${{ steps.outputs.outputs.ssh_user }}
+      vm_ip: ${{ steps.tf_outputs.outputs.vm_ip }}
+      registry_url: ${{ steps.tf_outputs.outputs.registry_url }}
+      registry_username: ${{ steps.tf_outputs.outputs.registry_username }}
+      registry_password: ${{ steps.tf_outputs.outputs.registry_password }}
+      ssh_user: ${{ steps.tf_outputs.outputs.ssh_user }}
 
     steps:
       - name: Checkout
@@ -64,29 +64,28 @@ jobs:
         run: terraform init -reconfigure -input=false
 
       - name: Read Terraform Outputs
-        id: outputs
+        id: tf_outputs
         working-directory: ${{ inputs.working-directory }}
         run: |
           echo "=== TERRAFORM RAW OUTPUTS ==="
-          
           terraform output
-          
+
           echo "=== registry_url ==="
-          terraform output -raw registry_url
-          
+          terraform output -raw registry_url || true
+
           echo "vm_ip=$(terraform output -raw vm_ip)" >> $GITHUB_OUTPUT
           echo "registry_url=$(terraform output -raw registry_url)" >> $GITHUB_OUTPUT
           echo "registry_username=$(terraform output -raw registry_username)" >> $GITHUB_OUTPUT
           echo "registry_password=$(terraform output -raw registry_password)" >> $GITHUB_OUTPUT
           echo "ssh_user=$(terraform output -raw ssh_user)" >> $GITHUB_OUTPUT
 
-      - name: Debug Outputs
+      - name: Debug Step Outputs
         run: |
           echo "======================================="
-          echo "Terraform Outputs"
+          echo "STEP OUTPUTS"
           echo "======================================="
-          echo "VM_IP=${{ steps.outputs.outputs.vm_ip }}"
-          echo "REGISTRY_URL=${{ steps.outputs.outputs.registry_url }}"
-          echo "REGISTRY_USERNAME=${{ steps.outputs.outputs.registry_username }}"
-          echo "SSH_USER=${{ steps.outputs.outputs.ssh_user }}"
+          echo "VM_IP=${{ steps.tf_outputs.outputs.vm_ip }}"
+          echo "REGISTRY_URL=${{ steps.tf_outputs.outputs.registry_url }}"
+          echo "REGISTRY_USERNAME=${{ steps.tf_outputs.outputs.registry_username }}"
+          echo "SSH_USER=${{ steps.tf_outputs.outputs.ssh_user }}"
           echo "======================================="
