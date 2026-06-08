@@ -72,7 +72,7 @@ jobs:
         run: |
 
           VM_IP=$(terraform output -raw vm_ip)
-          REGISTRY_URL=$(terraform output -raw registry_url)
+          REGISTRY_URL="TEST_REGISTRY_VALUE"
           REGISTRY_USERNAME=$(terraform output -raw registry_username)
           REGISTRY_PASSWORD=$(terraform output -raw registry_password)
 
