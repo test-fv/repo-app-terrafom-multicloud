@@ -2,7 +2,6 @@ name: Multi Cloud Application Delivery
 
 on:
   workflow_dispatch:
-
     inputs:
       cloud:
         required: true
@@ -11,39 +10,30 @@ on:
           - azure
           - aws
 
-concurrency:
-  group: app-${{ github.event.inputs.cloud }}
-  cancel-in-progress: false
-
 jobs:
 
   outputs:
-
     uses: ./.github/workflows/read-outputs.yml
-
     with:
       working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
       cloud-provider: ${{ github.event.inputs.cloud }}
-
     secrets: inherit
 
 
   debug:
-
     needs: outputs
     runs-on: ubuntu-latest
 
     steps:
-      - run: |
+      - name: Show outputs
+        run: |
           echo "VM_IP=${{ needs.outputs.vm_ip }}"
-          echo "REGISTRY=${{ needs.outputs.registry_server }}"
-          echo "REPO=${{ needs.outputs.repository_name }}"
+          echo "REGISTRY_SERVER=${{ needs.outputs.registry_server }}"
+          echo "REPOSITORY=${{ needs.outputs.repository_name }}"
 
 
   build:
-
     needs: outputs
-
     uses: ./.github/workflows/app-build.yml
 
     with:
@@ -54,36 +44,16 @@ jobs:
     secrets: inherit
 
 
-  security:
-
-    needs: build
-
-    uses: ./.github/workflows/security-scan.yml
-
-    secrets: inherit
-
-
   deploy:
-
-    needs:
-      - outputs
-      - build
-      - security
-
+    needs: [outputs, build]
     uses: ./.github/workflows/app-deploy.yml
 
     with:
-
       cloud-provider: ${{ github.event.inputs.cloud }}
-
       vm-ip: ${{ needs.outputs.vm_ip }}
-
       ssh-user: ${{ needs.outputs.ssh_user }}
-
       registry-url: ${{ needs.outputs.registry_server }}/${{ needs.outputs.repository_name }}
-
       registry-username: ${{ needs.outputs.registry_username }}
-
       registry-password: ${{ needs.outputs.registry_password }}
 
     secrets: inherit

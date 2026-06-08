@@ -11,27 +11,7 @@ on:
         required: true
         type: string
 
-    outputs:
-      vm_ip:
-        value: ${{ jobs.terraform.outputs.vm_ip }}
-
-      registry_server:
-        value: ${{ jobs.terraform.outputs.registry_server }}
-
-      repository_name:
-        value: ${{ jobs.terraform.outputs.repository_name }}
-
-      registry_username:
-        value: ${{ jobs.terraform.outputs.registry_username }}
-
-      registry_password:
-        value: ${{ jobs.terraform.outputs.registry_password }}
-
-      ssh_user:
-        value: ${{ jobs.terraform.outputs.ssh_user }}
-
 jobs:
-
   terraform:
     runs-on: ubuntu-latest
 
@@ -44,12 +24,11 @@ jobs:
       ssh_user: ${{ steps.out.outputs.ssh_user }}
 
     steps:
-
       - uses: actions/checkout@v4
 
       - uses: hashicorp/setup-terraform@v3
 
-      - name: Configure AWS
+      - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -61,35 +40,35 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: terraform init -reconfigure -input=false
 
-      - name: Extract outputs
+      - name: Read Terraform Outputs
         id: out
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
-
           set -euo pipefail
 
-          VM_IP=$(terraform output -raw vm_ip 2>/dev/null || true)
-          REGISTRY_SERVER=$(terraform output -raw registry_server 2>/dev/null || true)
-          REPOSITORY_NAME=$(terraform output -raw repository_name 2>/dev/null || true)
-          REGISTRY_USERNAME=$(terraform output -raw registry_username 2>/dev/null || true)
-          REGISTRY_PASSWORD=$(terraform output -raw registry_password 2>/dev/null || true)
+          VM_IP="$(terraform output -raw vm_ip 2>/dev/null || true)"
+          REGISTRY_SERVER="$(terraform output -raw registry_server 2>/dev/null || true)"
+          REPOSITORY_NAME="$(terraform output -raw repository_name 2>/dev/null || true)"
+          REGISTRY_USERNAME="$(terraform output -raw registry_username 2>/dev/null || true)"
+          REGISTRY_PASSWORD="$(terraform output -raw registry_password 2>/dev/null || true)"
 
-          # limpieza segura
-          VM_IP=$(echo "$VM_IP" | tr -d '\r' | xargs)
-          REGISTRY_SERVER=$(echo "$REGISTRY_SERVER" | tr -d '\r' | xargs)
-          REPOSITORY_NAME=$(echo "$REPOSITORY_NAME" | tr -d '\r' | xargs)
-          REGISTRY_USERNAME=$(echo "$REGISTRY_USERNAME" | tr -d '\r' | xargs)
-          REGISTRY_PASSWORD=$(echo "$REGISTRY_PASSWORD" | tr -d '\r' | xargs)
+          VM_IP="$(echo "$VM_IP" | tr -d '\r' | xargs)"
+          REGISTRY_SERVER="$(echo "$REGISTRY_SERVER" | tr -d '\r' | xargs)"
+          REPOSITORY_NAME="$(echo "$REPOSITORY_NAME" | tr -d '\r' | xargs)"
+          REGISTRY_USERNAME="$(echo "$REGISTRY_USERNAME" | tr -d '\r' | xargs)"
+          REGISTRY_PASSWORD="$(echo "$REGISTRY_PASSWORD" | tr -d '\r' | xargs)"
 
           if [ -z "$REGISTRY_SERVER" ]; then
-            echo "❌ registry_server is EMPTY"
+            echo "❌ registry_server EMPTY"
             exit 1
           fi
 
-          echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
-          echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
-          echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
-          echo "registry_username=$REGISTRY_USERNAME" >> "$GITHUB_OUTPUT"
-          echo "registry_password=$REGISTRY_PASSWORD" >> "$GITHUB_OUTPUT"
-          echo "ssh_user=ec2-user" >> "$GITHUB_OUTPUT"
+          {
+            echo "vm_ip=$VM_IP"
+            echo "registry_server=$REGISTRY_SERVER"
+            echo "repository_name=$REPOSITORY_NAME"
+            echo "registry_username=$REGISTRY_USERNAME"
+            echo "registry_password=$REGISTRY_PASSWORD"
+            echo "ssh_user=ec2-user"
+          } >> "$GITHUB_OUTPUT"
