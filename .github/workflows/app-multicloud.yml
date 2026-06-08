@@ -48,6 +48,14 @@ jobs:
           echo "SSH_USER='${{ needs.outputs.outputs.ssh_user }}'"
           echo "======================================="
 
+      - name: Dump Needs JSON
+        run: |
+          echo "======================================="
+          echo "NEEDS OUTPUTS JSON"
+          echo "======================================="
+          echo '${{ toJson(needs.outputs.outputs) }}'
+          echo "======================================="
+
   build:
 
     needs:
