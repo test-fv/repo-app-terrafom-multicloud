@@ -37,12 +37,12 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      vm_ip: ${{ steps.tf_outputs.outputs.vm_ip }}
-      registry_server: ${{ steps.tf_outputs.outputs.registry_server }}
-      repository_name: ${{ steps.tf_outputs.outputs.repository_name }}
-      registry_username: ${{ steps.tf_outputs.outputs.registry_username }}
-      registry_password: ${{ steps.tf_outputs.outputs.registry_password }}
-      ssh_user: ${{ steps.tf_outputs.outputs.ssh_user }}
+      vm_ip: ${{ steps.tf.outputs.vm_ip }}
+      registry_server: ${{ steps.tf.outputs.registry_server }}
+      repository_name: ${{ steps.tf.outputs.repository_name }}
+      registry_username: ${{ steps.tf.outputs.registry_username }}
+      registry_password: ${{ steps.tf.outputs.registry_password }}
+      ssh_user: ${{ steps.tf.outputs.ssh_user }}
 
     steps:
 
@@ -64,31 +64,32 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: terraform init -reconfigure -input=false
 
-      - name: Read Terraform Outputs
-        id: tf_outputs
+      - name: Read Terraform Outputs (ROBUST JSON MODE)
+        id: tf
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
 
           set -euo pipefail
 
-          echo "=== TERRAFORM OUTPUTS ==="
-          terraform output
+          echo "=== TERRAFORM OUTPUT JSON ==="
+          terraform output -json > tf.json
 
-          VM_IP=$(terraform output -raw vm_ip)
-          REGISTRY_SERVER=$(terraform output -raw registry_server | tr -d '\r' | tr -d '[]' | xargs)
-          REPOSITORY_NAME=$(terraform output -raw repository_name)
-          REGISTRY_USERNAME=$(terraform output -raw registry_username)
-          REGISTRY_PASSWORD=$(terraform output -raw registry_password)
+          cat tf.json
 
-          echo "RAW_SERVER=[$REGISTRY_SERVER]"
+          VM_IP=$(jq -r '.vm_ip.value' tf.json)
+          REGISTRY_SERVER=$(jq -r '.registry_server.value' tf.json)
+          REPOSITORY_NAME=$(jq -r '.repository_name.value' tf.json)
+          REGISTRY_USERNAME=$(jq -r '.registry_username.value' tf.json)
+          REGISTRY_PASSWORD=$(jq -r '.registry_password.value' tf.json)
 
-          {
-            echo "vm_ip=$VM_IP"
-            echo "registry_server=$REGISTRY_SERVER"
-            echo "repository_name=$REPOSITORY_NAME"
-            echo "registry_username=$REGISTRY_USERNAME"
-            echo "registry_password=$REGISTRY_PASSWORD"
-            echo "ssh_user=ec2-user"
-          } >> "$GITHUB_OUTPUT"
-          
+          echo "RAW REGISTRY SERVER: [$REGISTRY_SERVER]"
+
+          cat <<EOF >> "$GITHUB_OUTPUT"
+vm_ip=$VM_IP
+registry_server=$REGISTRY_SERVER
+repository_name=$REPOSITORY_NAME
+registry_username=$REGISTRY_USERNAME
+registry_password=$REGISTRY_PASSWORD
+ssh_user=ec2-user
+EOF
