@@ -6,6 +6,14 @@ output "registry_url" {
   value = module.registry.registry_url
 }
 
+output "registry_server" {
+  value = module.registry.registry_server
+}
+
+output "repository_name" {
+  value = module.registry.repository_name
+}
+
 output "registry_username" {
   value = "AWS_IAM"
 }
