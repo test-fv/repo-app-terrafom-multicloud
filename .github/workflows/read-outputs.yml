@@ -13,23 +13,23 @@ on:
 
     outputs:
       vm_ip:
-        value: ${{ jobs.outputs.outputs.vm_ip }}
+        value: ${{ jobs.terraform_outputs.outputs.vm_ip }}
 
       registry_url:
-        value: ${{ jobs.outputs.outputs.registry_url }}
+        value: ${{ jobs.terraform_outputs.outputs.registry_url }}
 
       registry_username:
-        value: ${{ jobs.outputs.outputs.registry_username }}
+        value: ${{ jobs.terraform_outputs.outputs.registry_username }}
 
       registry_password:
-        value: ${{ jobs.outputs.outputs.registry_password }}
+        value: ${{ jobs.terraform_outputs.outputs.registry_password }}
 
       ssh_user:
-        value: ${{ jobs.outputs.outputs.ssh_user }}
+        value: ${{ jobs.terraform_outputs.outputs.ssh_user }}
 
 jobs:
 
-  outputs:
+  terraform_outputs:
 
     runs-on: ubuntu-latest
 
@@ -71,35 +71,17 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: |
 
-          echo "=== TERRAFORM RAW OUTPUTS ==="
-          terraform output
-
           VM_IP=$(terraform output -raw vm_ip)
           REGISTRY_URL=$(terraform output -raw registry_url)
           REGISTRY_USERNAME=$(terraform output -raw registry_username)
           REGISTRY_PASSWORD=$(terraform output -raw registry_password)
 
           {
-            echo "vm_ip<<EOF"
-            echo "$VM_IP"
-            echo "EOF"
-
-            echo "registry_url<<EOF"
-            echo "$REGISTRY_URL"
-            echo "EOF"
-
-            echo "registry_username<<EOF"
-            echo "$REGISTRY_USERNAME"
-            echo "EOF"
-
-            echo "registry_password<<EOF"
-            echo "$REGISTRY_PASSWORD"
-            echo "EOF"
-
-            echo "ssh_user<<EOF"
-            echo "ec2-user"
-            echo "EOF"
-
+            echo "vm_ip=$VM_IP"
+            echo "registry_url=$REGISTRY_URL"
+            echo "registry_username=$REGISTRY_USERNAME"
+            echo "registry_password=$REGISTRY_PASSWORD"
+            echo "ssh_user=ec2-user"
           } >> "$GITHUB_OUTPUT"
 
       - name: Debug Step Outputs
