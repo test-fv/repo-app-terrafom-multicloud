@@ -81,7 +81,9 @@ jobs:
           VM_IP=$(terraform output -raw vm_ip)
 
           # PRUEBA TEMPORAL
-          REGISTRY_SERVER="TEST_ECR_SERVER"
+          REGISTRY_SERVER=$(terraform output -raw registry_server | tr -d '\r' | xargs)
+          
+          echo "RAW_SERVER=[$REGISTRY_SERVER]"
 
           REPOSITORY_NAME=$(terraform output -raw repository_name)
           REGISTRY_USERNAME=$(terraform output -raw registry_username)
