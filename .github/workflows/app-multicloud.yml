@@ -24,11 +24,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Debug outputs
+
+      - name: Debug outputs (human readable)
         run: |
           echo "VM_IP=${{ needs.outputs.vm_ip }}"
           echo "REGISTRY_SERVER=${{ needs.outputs.registry_server }}"
           echo "REPOSITORY=${{ needs.outputs.repository_name }}"
+
+      - name: HARD CHECK OUTPUTS
+        run: |
+          echo "RAW NEEDS OUTPUTS:"
+          echo "${{ toJSON(needs.outputs) }}"
 
 
   build:
