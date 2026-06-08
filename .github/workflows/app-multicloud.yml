@@ -28,6 +28,7 @@ jobs:
 
     secrets: inherit
 
+
   debug:
 
     needs: outputs
@@ -41,13 +42,14 @@ jobs:
           echo "======================================="
           echo "OUTPUTS RECEIVED FROM read-outputs.yml"
           echo "======================================="
-          echo "VM_IP='${{ needs.outputs.outputs.vm_ip }}'"
-          echo "REGISTRY_SERVER='${{ needs.outputs.outputs.registry_server }}'"
-          echo "REPOSITORY_NAME='${{ needs.outputs.outputs.repository_name }}'"
-          echo "REGISTRY_USERNAME='${{ needs.outputs.outputs.registry_username }}'"
+          echo "VM_IP='${{ needs.outputs.vm_ip }}'"
+          echo "REGISTRY_SERVER='${{ needs.outputs.registry_server }}'"
+          echo "REPOSITORY_NAME='${{ needs.outputs.repository_name }}'"
+          echo "REGISTRY_USERNAME='${{ needs.outputs.registry_username }}'"
           echo "REGISTRY_PASSWORD='***'"
-          echo "SSH_USER='${{ needs.outputs.outputs.ssh_user }}'"
+          echo "SSH_USER='${{ needs.outputs.ssh_user }}'"
           echo "======================================="
+
 
   build:
 
@@ -59,10 +61,11 @@ jobs:
 
     with:
       cloud-provider: ${{ github.event.inputs.cloud }}
-      registry-server: ${{ needs.outputs.outputs.registry_server }}
-      repository-name: ${{ needs.outputs.outputs.repository_name }}
+      registry-server: ${{ needs.outputs.registry_server }}
+      repository-name: ${{ needs.outputs.repository_name }}
 
     secrets: inherit
+
 
   security:
 
@@ -71,6 +74,7 @@ jobs:
     uses: ./.github/workflows/security-scan.yml
 
     secrets: inherit
+
 
   deploy:
 
@@ -85,14 +89,14 @@ jobs:
 
       cloud-provider: ${{ github.event.inputs.cloud }}
 
-      vm-ip: ${{ needs.outputs.outputs.vm_ip }}
+      vm-ip: ${{ needs.outputs.vm_ip }}
 
-      ssh-user: ${{ needs.outputs.outputs.ssh_user }}
+      ssh-user: ${{ needs.outputs.ssh_user }}
 
-      registry-url: ${{ needs.outputs.outputs.registry_server }}/${{ needs.outputs.outputs.repository_name }}
+      registry-url: ${{ needs.outputs.registry_server }}/${{ needs.outputs.repository_name }}
 
-      registry-username: ${{ needs.outputs.outputs.registry_username }}
+      registry-username: ${{ needs.outputs.registry_username }}
 
-      registry-password: ${{ needs.outputs.outputs.registry_password }}
+      registry-password: ${{ needs.outputs.registry_password }}
 
     secrets: inherit
