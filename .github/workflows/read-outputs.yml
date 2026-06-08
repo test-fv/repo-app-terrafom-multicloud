@@ -6,41 +6,39 @@ on:
       cloud-provider:
         required: true
         type: string
-
       working-directory:
         required: true
         type: string
 
     outputs:
       vm_ip:
-        value: ${{ jobs.outputs.outputs.vm_ip }}
+        value: ${{ jobs.terraform.outputs.vm_ip }}
       registry_server:
-        value: ${{ jobs.outputs.outputs.registry_server }}
+        value: ${{ jobs.terraform.outputs.registry_server }}
       repository_name:
-        value: ${{ jobs.outputs.outputs.repository_name }}
+        value: ${{ jobs.terraform.outputs.repository_name }}
       registry_username:
-        value: ${{ jobs.outputs.outputs.registry_username }}
+        value: ${{ jobs.terraform.outputs.registry_username }}
       registry_password:
-        value: ${{ jobs.outputs.outputs.registry_password }}
+        value: ${{ jobs.terraform.outputs.registry_password }}
       ssh_user:
-        value: ${{ jobs.outputs.outputs.ssh_user }}
+        value: ${{ jobs.terraform.outputs.ssh_user }}
 
 jobs:
-  outputs:
+  terraform:
     runs-on: ubuntu-latest
 
     outputs:
-      vm_ip: ${{ steps.tf.outputs.vm_ip }}
-      registry_server: ${{ steps.tf.outputs.registry_server }}
-      repository_name: ${{ steps.tf.outputs.repository_name }}
-      registry_username: ${{ steps.tf.outputs.registry_username }}
-      registry_password: ${{ steps.tf.outputs.registry_password }}
-      ssh_user: ${{ steps.tf.outputs.ssh_user }}
+      vm_ip: ${{ steps.outputs.outputs.vm_ip }}
+      registry_server: ${{ steps.outputs.outputs.registry_server }}
+      repository_name: ${{ steps.outputs.outputs.repository_name }}
+      registry_username: ${{ steps.outputs.outputs.registry_username }}
+      registry_password: ${{ steps.outputs.outputs.registry_password }}
+      ssh_user: ${{ steps.outputs.outputs.ssh_user }}
 
     steps:
       - uses: actions/checkout@v4
 
-      # 🔥 SOLO AWS (Azure bloqueado completamente)
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
@@ -49,28 +47,18 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: FAIL SAFE (NO AZURE)
-        run: |
-          if [ "${{ inputs.cloud-provider }}" != "aws" ]; then
-            echo "❌ SOLO AWS ACTIVO EN ESTE PIPELINE"
-            exit 1
-          fi
-
       - uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         working-directory: ${{ inputs.working-directory }}
         run: terraform init -reconfigure -input=false
 
-      - name: Terraform Outputs
-        id: tf
+      - name: Read Terraform Outputs
+        id: outputs
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
           set -euo pipefail
-
-          echo "=== RAW TERRAFORM OUTPUT ==="
-          terraform output || true
 
           VM_IP=$(terraform output -raw vm_ip 2>/dev/null || true)
           REGISTRY_SERVER=$(terraform output -raw registry_server 2>/dev/null || true)
@@ -81,15 +69,13 @@ jobs:
           echo "DEBUG registry_server=[$REGISTRY_SERVER]"
 
           if [ -z "$REGISTRY_SERVER" ]; then
-            echo "❌ registry_server vacío desde Terraform"
+            echo "❌ registry_server vacío (NO existe en terraform state o output)"
             exit 1
           fi
 
-          {
-            echo "vm_ip=$VM_IP"
-            echo "registry_server=$REGISTRY_SERVER"
-            echo "repository_name=$REPOSITORY_NAME"
-            echo "registry_username=$REGISTRY_USERNAME"
-            echo "registry_password=$REGISTRY_PASSWORD"
-            echo "ssh_user=ec2-user"
-          } >> "$GITHUB_OUTPUT"
+          echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
+          echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
+          echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
+          echo "registry_username=$REGISTRY_USERNAME" >> "$GITHUB_OUTPUT"
+          echo "registry_password=$REGISTRY_PASSWORD" >> "$GITHUB_OUTPUT"
+          echo "ssh_user=ec2-user" >> "$GITHUB_OUTPUT"
