@@ -73,6 +73,7 @@ jobs:
       - name: Read Terraform Outputs
         id: tf_outputs
         working-directory: ${{ inputs.working-directory }}
+        shell: bash
         run: |
 
           echo "=== TERRAFORM RAW OUTPUTS ==="
@@ -80,8 +81,8 @@ jobs:
 
           VM_IP=$(terraform output -raw vm_ip)
 
-          # PRUEBA TEMPORAL
-          REGISTRY_SERVER=$(terraform output -raw registry_server | tr -d '\r' | tr -d '[]')
+          # FIX: sanitización segura
+          REGISTRY_SERVER=$(terraform output -raw registry_server | tr -d '\r' | tr -d '[]' | xargs)
 
           echo "RAW_SERVER=[$REGISTRY_SERVER]"
 
@@ -89,16 +90,12 @@ jobs:
           REGISTRY_USERNAME=$(terraform output -raw registry_username)
           REGISTRY_PASSWORD=$(terraform output -raw registry_password)
 
-          {
-            echo "vm_ip=$VM_IP"
-            echo "registry_server<<EOF"
-            echo "$REGISTRY_SERVER"
-            echo "EOF"
-            echo "repository_name=$REPOSITORY_NAME"
-            echo "registry_username=$REGISTRY_USERNAME"
-            echo "registry_password=$REGISTRY_PASSWORD"
-            echo "ssh_user=ec2-user"
-          } >> "$GITHUB_OUTPUT"
+          echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
+          echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
+          echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
+          echo "registry_username=$REGISTRY_USERNAME" >> "$GITHUB_OUTPUT"
+          echo "registry_password=$REGISTRY_PASSWORD" >> "$GITHUB_OUTPUT"
+          echo "ssh_user=ec2-user" >> "$GITHUB_OUTPUT"
 
       - name: Debug Step Outputs
         run: |
