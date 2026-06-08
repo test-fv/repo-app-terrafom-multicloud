@@ -64,7 +64,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: terraform init -reconfigure -input=false
 
-      - name: Read Terraform Outputs (ROBUST JSON MODE)
+      - name: Read Terraform Outputs
         id: tf
         working-directory: ${{ inputs.working-directory }}
         shell: bash
@@ -75,8 +75,6 @@ jobs:
           echo "=== TERRAFORM OUTPUT JSON ==="
           terraform output -json > tf.json
 
-          cat tf.json
-
           VM_IP=$(jq -r '.vm_ip.value' tf.json)
           REGISTRY_SERVER=$(jq -r '.registry_server.value' tf.json)
           REPOSITORY_NAME=$(jq -r '.repository_name.value' tf.json)
@@ -85,11 +83,9 @@ jobs:
 
           echo "RAW REGISTRY SERVER: [$REGISTRY_SERVER]"
 
-          cat <<EOF >> "$GITHUB_OUTPUT"
-vm_ip=$VM_IP
-registry_server=$REGISTRY_SERVER
-repository_name=$REPOSITORY_NAME
-registry_username=$REGISTRY_USERNAME
-registry_password=$REGISTRY_PASSWORD
-ssh_user=ec2-user
-EOF
+          echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
+          echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
+          echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
+          echo "registry_username=$REGISTRY_USERNAME" >> "$GITHUB_OUTPUT"
+          echo "registry_password=$REGISTRY_PASSWORD" >> "$GITHUB_OUTPUT"
+          echo "ssh_user=ec2-user" >> "$GITHUB_OUTPUT"
