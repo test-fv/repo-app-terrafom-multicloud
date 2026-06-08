@@ -80,22 +80,18 @@ jobs:
           terraform output
 
           VM_IP=$(terraform output -raw vm_ip)
-
-          # FIX: sanitización segura
           REGISTRY_SERVER=$(terraform output -raw registry_server | tr -d '\r' | tr -d '[]' | xargs)
-
-          echo "RAW_SERVER=[$REGISTRY_SERVER]"
-
           REPOSITORY_NAME=$(terraform output -raw repository_name)
           REGISTRY_USERNAME=$(terraform output -raw registry_username)
           REGISTRY_PASSWORD=$(terraform output -raw registry_password)
 
-          echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
-          echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
-          echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
-          echo "registry_username=$REGISTRY_USERNAME" >> "$GITHUB_OUTPUT"
-          echo "registry_password=$REGISTRY_PASSWORD" >> "$GITHUB_OUTPUT"
-          echo "ssh_user=ec2-user" >> "$GITHUB_OUTPUT"
+          # 🔥 IMPORTANTE: usar stdout como JSON (NO GITHUB_OUTPUT)
+          echo "::set-output name=vm_ip::$VM_IP"
+          echo "::set-output name=registry_server::$REGISTRY_SERVER"
+          echo "::set-output name=repository_name::$REPOSITORY_NAME"
+          echo "::set-output name=registry_username::$REGISTRY_USERNAME"
+          echo "::set-output name=registry_password::$REGISTRY_PASSWORD"
+          echo "::set-output name=ssh_user::ec2-user"
 
       - name: Debug Step Outputs
         run: |
