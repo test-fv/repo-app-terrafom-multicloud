@@ -10,6 +10,14 @@ output "registry_url" {
   value = module.platform.registry_url
 }
 
+output "registry_server" {
+  value = module.platform.registry_server
+}
+
+output "repository_name" {
+  value = module.platform.repository_name
+}
+
 output "registry_username" {
   value = module.platform.registry_username
 }
