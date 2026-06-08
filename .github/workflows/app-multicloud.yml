@@ -15,8 +15,8 @@ jobs:
   outputs:
     uses: ./.github/workflows/read-outputs.yml
     with:
-      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
       cloud-provider: ${{ github.event.inputs.cloud }}
+      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
     secrets: inherit
 
 

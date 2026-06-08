@@ -6,22 +6,35 @@ on:
       cloud-provider:
         required: true
         type: string
-
       working-directory:
         required: true
         type: string
+
+    outputs:
+      vm_ip:
+        value: ${{ jobs.terraform.outputs.vm_ip }}
+      registry_server:
+        value: ${{ jobs.terraform.outputs.registry_server }}
+      repository_name:
+        value: ${{ jobs.terraform.outputs.repository_name }}
+      registry_username:
+        value: ${{ jobs.terraform.outputs.registry_username }}
+      registry_password:
+        value: ${{ jobs.terraform.outputs.registry_password }}
+      ssh_user:
+        value: ${{ jobs.terraform.outputs.ssh_user }}
 
 jobs:
   terraform:
     runs-on: ubuntu-latest
 
     outputs:
-      vm_ip: ${{ steps.out.outputs.vm_ip }}
-      registry_server: ${{ steps.out.outputs.registry_server }}
-      repository_name: ${{ steps.out.outputs.repository_name }}
-      registry_username: ${{ steps.out.outputs.registry_username }}
-      registry_password: ${{ steps.out.outputs.registry_password }}
-      ssh_user: ${{ steps.out.outputs.ssh_user }}
+      vm_ip: ${{ steps.outputs.outputs.vm_ip }}
+      registry_server: ${{ steps.outputs.outputs.registry_server }}
+      repository_name: ${{ steps.outputs.outputs.repository_name }}
+      registry_username: ${{ steps.outputs.outputs.registry_username }}
+      registry_password: ${{ steps.outputs.outputs.registry_password }}
+      ssh_user: ${{ steps.outputs.outputs.ssh_user }}
 
     steps:
       - uses: actions/checkout@v4
@@ -41,26 +54,20 @@ jobs:
         run: terraform init -reconfigure -input=false
 
       - name: Read Terraform Outputs
-        id: out
+        id: outputs
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
           set -euo pipefail
 
-          VM_IP="$(terraform output -raw vm_ip 2>/dev/null || true)"
-          REGISTRY_SERVER="$(terraform output -raw registry_server 2>/dev/null || true)"
-          REPOSITORY_NAME="$(terraform output -raw repository_name 2>/dev/null || true)"
-          REGISTRY_USERNAME="$(terraform output -raw registry_username 2>/dev/null || true)"
-          REGISTRY_PASSWORD="$(terraform output -raw registry_password 2>/dev/null || true)"
-
-          VM_IP="$(echo "$VM_IP" | tr -d '\r' | xargs)"
-          REGISTRY_SERVER="$(echo "$REGISTRY_SERVER" | tr -d '\r' | xargs)"
-          REPOSITORY_NAME="$(echo "$REPOSITORY_NAME" | tr -d '\r' | xargs)"
-          REGISTRY_USERNAME="$(echo "$REGISTRY_USERNAME" | tr -d '\r' | xargs)"
-          REGISTRY_PASSWORD="$(echo "$REGISTRY_PASSWORD" | tr -d '\r' | xargs)"
+          VM_IP="$(terraform output -raw vm_ip | tr -d '\r' | xargs)"
+          REGISTRY_SERVER="$(terraform output -raw registry_server | tr -d '\r' | xargs)"
+          REPOSITORY_NAME="$(terraform output -raw repository_name | tr -d '\r' | xargs)"
+          REGISTRY_USERNAME="$(terraform output -raw registry_username | tr -d '\r' | xargs)"
+          REGISTRY_PASSWORD="$(terraform output -raw registry_password | tr -d '\r' | xargs)"
 
           if [ -z "$REGISTRY_SERVER" ]; then
-            echo "❌ registry_server EMPTY"
+            echo "❌ registry_server está vacío desde Terraform"
             exit 1
           fi
 

@@ -7,11 +7,9 @@ on:
       cloud-provider:
         required: true
         type: string
-
       registry-server:
         required: true
         type: string
-
       repository-name:
         required: true
         type: string
@@ -27,17 +25,16 @@ jobs:
         with:
           distribution: temurin
           java-version: 17
-          cache: maven
 
-      - name: Build App
+      - name: Build
         working-directory: app
         run: mvn clean package
 
-      - name: Validate inputs
+      - name: Validate input
         shell: bash
         run: |
           if [ -z "${{ inputs.registry-server }}" ]; then
-            echo "❌ registry-server EMPTY"
+            echo "❌ registry-server vacío"
             exit 1
           fi
 
@@ -51,12 +48,12 @@ jobs:
             --password-stdin \
             "${{ inputs.registry-server }}"
 
-      - name: Build Docker Image
+      - name: Docker Build
         run: |
-          IMAGE="${{ inputs.registry-server }}/${{ inputs.repository-name }}"
-          docker build -t $IMAGE:latest ./app
+          docker build \
+            -t "${{ inputs.registry-server }}/${{ inputs.repository-name }}:latest" \
+            ./app
 
-      - name: Push Docker Image
+      - name: Docker Push
         run: |
-          IMAGE="${{ inputs.registry-server }}/${{ inputs.repository-name }}"
-          docker push $IMAGE:latest
+          docker push "${{ inputs.registry-server }}/${{ inputs.repository-name }}:latest"
