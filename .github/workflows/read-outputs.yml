@@ -64,7 +64,7 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: terraform init -reconfigure -input=false
 
-      - name: Read Terraform Outputs
+      - name: Read Terraform Outputs (PRO SAFE MODE)
         id: tf
         working-directory: ${{ inputs.working-directory }}
         shell: bash
@@ -72,16 +72,26 @@ jobs:
 
           set -euo pipefail
 
-          echo "=== TERRAFORM OUTPUT JSON ==="
-          terraform output -json > tf.json
+          echo "=== TERRAFORM OUTPUT (RAW) ==="
 
-          VM_IP=$(jq -r '.vm_ip.value' tf.json)
-          REGISTRY_SERVER=$(jq -r '.registry_server.value' tf.json)
-          REPOSITORY_NAME=$(jq -r '.repository_name.value' tf.json)
-          REGISTRY_USERNAME=$(jq -r '.registry_username.value' tf.json)
-          REGISTRY_PASSWORD=$(jq -r '.registry_password.value' tf.json)
+          VM_IP=$(terraform output -raw vm_ip 2>/dev/null || true)
+          REGISTRY_SERVER=$(terraform output -raw registry_server 2>/dev/null || true)
+          REPOSITORY_NAME=$(terraform output -raw repository_name 2>/dev/null || true)
+          REGISTRY_USERNAME=$(terraform output -raw registry_username 2>/dev/null || true)
+          REGISTRY_PASSWORD=$(terraform output -raw registry_password 2>/dev/null || true)
 
-          echo "RAW REGISTRY SERVER: [$REGISTRY_SERVER]"
+          # limpieza estricta (evita CRLF / espacios invisibles)
+          VM_IP=$(echo "$VM_IP" | tr -d '\r' | xargs)
+          REGISTRY_SERVER=$(echo "$REGISTRY_SERVER" | tr -d '\r' | xargs)
+          REPOSITORY_NAME=$(echo "$REPOSITORY_NAME" | tr -d '\r' | xargs)
+          REGISTRY_USERNAME=$(echo "$REGISTRY_USERNAME" | tr -d '\r' | xargs)
+          REGISTRY_PASSWORD=$(echo "$REGISTRY_PASSWORD" | tr -d '\r' | xargs)
+
+          # validación fuerte (fail fast)
+          if [ -z "$REGISTRY_SERVER" ]; then
+            echo "❌ registry_server is EMPTY from Terraform output"
+            exit 1
+          fi
 
           echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
           echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
