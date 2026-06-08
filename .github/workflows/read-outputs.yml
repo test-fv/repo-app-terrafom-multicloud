@@ -79,7 +79,10 @@ jobs:
           terraform output
 
           VM_IP=$(terraform output -raw vm_ip)
-          REGISTRY_SERVER=$(terraform output -raw registry_server)
+
+          # PRUEBA TEMPORAL
+          REGISTRY_SERVER="TEST_ECR_SERVER"
+
           REPOSITORY_NAME=$(terraform output -raw repository_name)
           REGISTRY_USERNAME=$(terraform output -raw registry_username)
           REGISTRY_PASSWORD=$(terraform output -raw registry_password)
@@ -104,3 +107,8 @@ jobs:
           echo "REGISTRY_USERNAME=${{ steps.tf_outputs.outputs.registry_username }}"
           echo "SSH_USER=${{ steps.tf_outputs.outputs.ssh_user }}"
           echo "======================================="
+
+      - name: Debug Raw Variables
+        run: |
+          echo "SERVER=[${{ steps.tf_outputs.outputs.registry_server }}]"
+          echo "REPOSITORY=[${{ steps.tf_outputs.outputs.repository_name }}]"
