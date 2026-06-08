@@ -9,7 +9,11 @@ on:
         required: true
         type: string
 
-      registry-url:
+      registry-server:
+        required: true
+        type: string
+
+      repository-name:
         required: true
         type: string
 
@@ -21,14 +25,8 @@ jobs:
 
     steps:
 
-      # =========================
-      # CHECKOUT
-      # =========================
       - uses: actions/checkout@v4
 
-      # =========================
-      # JAVA BUILD
-      # =========================
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -40,9 +38,6 @@ jobs:
         working-directory: app
         run: mvn clean package
 
-      # =========================
-      # AZURE LOGIN
-      # =========================
       - name: Azure Login
         if: inputs.cloud-provider == 'azure'
         uses: azure/login@v2
@@ -52,12 +47,8 @@ jobs:
       - name: Azure Container Registry Login
         if: inputs.cloud-provider == 'azure'
         run: |
-          set -e
           az acr login --name ${{ secrets.TF_VAR_acr_name }}
 
-      # =========================
-      # AWS CONFIG
-      # =========================
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
@@ -66,61 +57,31 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # =========================
-      # 🔥 DEBUG CRÍTICO (TU PROBLEMA ACTUAL)
-      # =========================
-      - name: Debug Registry URL
+      - name: Debug Registry
         run: |
-          echo "=============================="
-          echo "CLOUD: ${{ inputs.cloud-provider }}"
-          echo "REGISTRY RECEIVED: ${{ inputs.registry-url }}"
-          echo "=============================="
+          echo "SERVER=${{ inputs.registry-server }}"
+          echo "REPOSITORY=${{ inputs.repository-name }}"
 
-      # =========================
-      # VALIDACIÓN REGISTRY (EVITA DOCKER HUB FALLBACK)
-      # =========================
-      - name: Validate Registry URL
-        run: |
-          set -e
-
-          if [ -z "${{ inputs.registry-url }}" ]; then
-            echo "❌ ERROR: registry-url is empty"
-            exit 1
-          fi
-
-          echo "✔ Registry OK: ${{ inputs.registry-url }}"
-
-      # =========================
-      # AWS ECR LOGIN
-      # =========================
       - name: AWS ECR Login
         if: inputs.cloud-provider == 'aws'
         run: |
-          set -e
-
           aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
           | docker login \
             --username AWS \
             --password-stdin \
-            ${{ inputs.registry-url }}
+            ${{ inputs.registry-server }}
 
-      # =========================
-      # DOCKER BUILD
-      # =========================
       - name: Docker Build
         run: |
-          set -e
+          IMAGE="${{ inputs.registry-server }}/${{ inputs.repository-name }}"
 
           docker build \
-            -t ${{ inputs.registry-url }}/myapp:latest \
+            -t ${IMAGE}:latest \
             ./app
 
-      # =========================
-      # DOCKER PUSH
-      # =========================
       - name: Docker Push
         run: |
-          set -e
+          IMAGE="${{ inputs.registry-server }}/${{ inputs.repository-name }}"
 
           docker push \
-            ${{ inputs.registry-url }}/myapp:latest
+            ${IMAGE}:latest

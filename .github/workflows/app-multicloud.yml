@@ -42,18 +42,11 @@ jobs:
           echo "OUTPUTS RECEIVED FROM read-outputs.yml"
           echo "======================================="
           echo "VM_IP='${{ needs.outputs.outputs.vm_ip }}'"
-          echo "REGISTRY_URL='${{ needs.outputs.outputs.registry_url }}'"
+          echo "REGISTRY_SERVER='${{ needs.outputs.outputs.registry_server }}'"
+          echo "REPOSITORY_NAME='${{ needs.outputs.outputs.repository_name }}'"
           echo "REGISTRY_USERNAME='${{ needs.outputs.outputs.registry_username }}'"
           echo "REGISTRY_PASSWORD='***'"
           echo "SSH_USER='${{ needs.outputs.outputs.ssh_user }}'"
-          echo "======================================="
-
-      - name: Dump Needs JSON
-        run: |
-          echo "======================================="
-          echo "NEEDS OUTPUTS JSON"
-          echo "======================================="
-          echo '${{ toJson(needs.outputs.outputs) }}'
           echo "======================================="
 
   build:
@@ -66,7 +59,8 @@ jobs:
 
     with:
       cloud-provider: ${{ github.event.inputs.cloud }}
-      registry-url: ${{ needs.outputs.outputs.registry_url }}
+      registry-server: ${{ needs.outputs.outputs.registry_server }}
+      repository-name: ${{ needs.outputs.outputs.repository_name }}
 
     secrets: inherit
 
@@ -95,7 +89,7 @@ jobs:
 
       ssh-user: ${{ needs.outputs.outputs.ssh_user }}
 
-      registry-url: ${{ needs.outputs.outputs.registry_url }}
+      registry-url: ${{ needs.outputs.outputs.registry_server }}/${{ needs.outputs.outputs.repository_name }}
 
       registry-username: ${{ needs.outputs.outputs.registry_username }}
 
