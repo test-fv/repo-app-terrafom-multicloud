@@ -18,6 +18,12 @@ on:
       registry_url:
         value: ${{ jobs.terraform_outputs.outputs.registry_url }}
 
+      registry_server:
+        value: ${{ jobs.terraform_outputs.outputs.registry_server }}
+
+      repository_name:
+        value: ${{ jobs.terraform_outputs.outputs.repository_name }}
+
       registry_username:
         value: ${{ jobs.terraform_outputs.outputs.registry_username }}
 
@@ -36,6 +42,8 @@ jobs:
     outputs:
       vm_ip: ${{ steps.tf_outputs.outputs.vm_ip }}
       registry_url: ${{ steps.tf_outputs.outputs.registry_url }}
+      registry_server: ${{ steps.tf_outputs.outputs.registry_server }}
+      repository_name: ${{ steps.tf_outputs.outputs.repository_name }}
       registry_username: ${{ steps.tf_outputs.outputs.registry_username }}
       registry_password: ${{ steps.tf_outputs.outputs.registry_password }}
       ssh_user: ${{ steps.tf_outputs.outputs.ssh_user }}
@@ -71,14 +79,21 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: |
 
+          echo "=== TERRAFORM RAW OUTPUTS ==="
+          terraform output
+
           VM_IP=$(terraform output -raw vm_ip)
-          REGISTRY_URL="TEST_REGISTRY_VALUE"
+          REGISTRY_URL=$(terraform output -raw registry_url)
+          REGISTRY_SERVER=$(terraform output -raw registry_server)
+          REPOSITORY_NAME=$(terraform output -raw repository_name)
           REGISTRY_USERNAME=$(terraform output -raw registry_username)
           REGISTRY_PASSWORD=$(terraform output -raw registry_password)
 
           {
             echo "vm_ip=$VM_IP"
             echo "registry_url=$REGISTRY_URL"
+            echo "registry_server=$REGISTRY_SERVER"
+            echo "repository_name=$REPOSITORY_NAME"
             echo "registry_username=$REGISTRY_USERNAME"
             echo "registry_password=$REGISTRY_PASSWORD"
             echo "ssh_user=ec2-user"
@@ -91,6 +106,8 @@ jobs:
           echo "======================================="
           echo "VM_IP=${{ steps.tf_outputs.outputs.vm_ip }}"
           echo "REGISTRY_URL=${{ steps.tf_outputs.outputs.registry_url }}"
+          echo "REGISTRY_SERVER=${{ steps.tf_outputs.outputs.registry_server }}"
+          echo "REPOSITORY_NAME=${{ steps.tf_outputs.outputs.repository_name }}"
           echo "REGISTRY_USERNAME=${{ steps.tf_outputs.outputs.registry_username }}"
           echo "SSH_USER=${{ steps.tf_outputs.outputs.ssh_user }}"
           echo "======================================="
