@@ -1,3 +1,4 @@
+
 name: Multi Cloud Application Delivery
 
 on:
@@ -28,9 +29,31 @@ jobs:
 
     secrets: inherit
 
-  build:
+  debug:
 
     needs: outputs
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Show reusable workflow outputs
+        run: |
+          echo "======================================="
+          echo "OUTPUTS RECEIVED FROM read-outputs.yml"
+          echo "======================================="
+          echo "VM_IP='${{ needs.outputs.outputs.vm_ip }}'"
+          echo "REGISTRY_URL='${{ needs.outputs.outputs.registry_url }}'"
+          echo "REGISTRY_USERNAME='${{ needs.outputs.outputs.registry_username }}'"
+          echo "REGISTRY_PASSWORD='***'"
+          echo "SSH_USER='${{ needs.outputs.outputs.ssh_user }}'"
+          echo "======================================="
+
+  build:
+
+    needs:
+      - outputs
+      - debug
 
     uses: ./.github/workflows/app-build.yml
 
@@ -39,9 +62,6 @@ jobs:
       registry-url: ${{ needs.outputs.outputs.registry_url }}
 
     secrets: inherit
-
-    # 🔥 DEBUG IMPORTANTE
-    # (ojo: esto se ejecuta dentro del reusable workflow, no aquí directamente)
 
   security:
 
