@@ -13,46 +13,43 @@ on:
 
     outputs:
       vm_ip:
-        value: ${{ jobs.terraform_outputs.outputs.vm_ip }}
+        value: ${{ jobs.terraform.outputs.vm_ip }}
 
       registry_server:
-        value: ${{ jobs.terraform_outputs.outputs.registry_server }}
+        value: ${{ jobs.terraform.outputs.registry_server }}
 
       repository_name:
-        value: ${{ jobs.terraform_outputs.outputs.repository_name }}
+        value: ${{ jobs.terraform.outputs.repository_name }}
 
       registry_username:
-        value: ${{ jobs.terraform_outputs.outputs.registry_username }}
+        value: ${{ jobs.terraform.outputs.registry_username }}
 
       registry_password:
-        value: ${{ jobs.terraform_outputs.outputs.registry_password }}
+        value: ${{ jobs.terraform.outputs.registry_password }}
 
       ssh_user:
-        value: ${{ jobs.terraform_outputs.outputs.ssh_user }}
+        value: ${{ jobs.terraform.outputs.ssh_user }}
 
 jobs:
 
-  terraform_outputs:
-
+  terraform:
     runs-on: ubuntu-latest
 
     outputs:
-      vm_ip: ${{ steps.tf.outputs.vm_ip }}
-      registry_server: ${{ steps.tf.outputs.registry_server }}
-      repository_name: ${{ steps.tf.outputs.repository_name }}
-      registry_username: ${{ steps.tf.outputs.registry_username }}
-      registry_password: ${{ steps.tf.outputs.registry_password }}
-      ssh_user: ${{ steps.tf.outputs.ssh_user }}
+      vm_ip: ${{ steps.out.outputs.vm_ip }}
+      registry_server: ${{ steps.out.outputs.registry_server }}
+      repository_name: ${{ steps.out.outputs.repository_name }}
+      registry_username: ${{ steps.out.outputs.registry_username }}
+      registry_password: ${{ steps.out.outputs.registry_password }}
+      ssh_user: ${{ steps.out.outputs.ssh_user }}
 
     steps:
 
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS
         if: inputs.cloud-provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -64,15 +61,13 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
         run: terraform init -reconfigure -input=false
 
-      - name: Read Terraform Outputs (PRO SAFE MODE)
-        id: tf
+      - name: Extract outputs
+        id: out
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
 
           set -euo pipefail
-
-          echo "=== TERRAFORM OUTPUT (RAW) ==="
 
           VM_IP=$(terraform output -raw vm_ip 2>/dev/null || true)
           REGISTRY_SERVER=$(terraform output -raw registry_server 2>/dev/null || true)
@@ -80,16 +75,15 @@ jobs:
           REGISTRY_USERNAME=$(terraform output -raw registry_username 2>/dev/null || true)
           REGISTRY_PASSWORD=$(terraform output -raw registry_password 2>/dev/null || true)
 
-          # limpieza estricta (evita CRLF / espacios invisibles)
+          # limpieza segura
           VM_IP=$(echo "$VM_IP" | tr -d '\r' | xargs)
           REGISTRY_SERVER=$(echo "$REGISTRY_SERVER" | tr -d '\r' | xargs)
           REPOSITORY_NAME=$(echo "$REPOSITORY_NAME" | tr -d '\r' | xargs)
           REGISTRY_USERNAME=$(echo "$REGISTRY_USERNAME" | tr -d '\r' | xargs)
           REGISTRY_PASSWORD=$(echo "$REGISTRY_PASSWORD" | tr -d '\r' | xargs)
 
-          # validación fuerte (fail fast)
           if [ -z "$REGISTRY_SERVER" ]; then
-            echo "❌ registry_server is EMPTY from Terraform output"
+            echo "❌ registry_server is EMPTY"
             exit 1
           fi
 
