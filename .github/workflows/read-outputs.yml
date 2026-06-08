@@ -37,12 +37,12 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      vm_ip: ${{ steps.tf_outputs.outputs.vm_ip }}
-      registry_server: ${{ steps.tf_outputs.outputs.registry_server }}
-      repository_name: ${{ steps.tf_outputs.outputs.repository_name }}
-      registry_username: ${{ steps.tf_outputs.outputs.registry_username }}
-      registry_password: ${{ steps.tf_outputs.outputs.registry_password }}
-      ssh_user: ${{ steps.tf_outputs.outputs.ssh_user }}
+      vm_ip: ${{ steps.export.outputs.vm_ip }}
+      registry_server: ${{ steps.export.outputs.registry_server }}
+      repository_name: ${{ steps.export.outputs.repository_name }}
+      registry_username: ${{ steps.export.outputs.registry_username }}
+      registry_password: ${{ steps.export.outputs.registry_password }}
+      ssh_user: ${{ steps.export.outputs.ssh_user }}
 
     steps:
 
@@ -51,12 +51,6 @@ jobs:
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
-
-      - name: Azure Login
-        if: inputs.cloud-provider == 'azure'
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
@@ -71,12 +65,14 @@ jobs:
         run: terraform init -reconfigure -input=false
 
       - name: Read Terraform Outputs
-        id: tf_outputs
+        id: export
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
 
-          echo "=== TERRAFORM RAW OUTPUTS ==="
+          set -euo pipefail
+
+          echo "=== TERRAFORM OUTPUTS ==="
           terraform output
 
           VM_IP=$(terraform output -raw vm_ip)
@@ -85,27 +81,31 @@ jobs:
           REGISTRY_USERNAME=$(terraform output -raw registry_username)
           REGISTRY_PASSWORD=$(terraform output -raw registry_password)
 
-          # 🔥 IMPORTANTE: usar stdout como JSON (NO GITHUB_OUTPUT)
-          echo "::set-output name=vm_ip::$VM_IP"
-          echo "::set-output name=registry_server::$REGISTRY_SERVER"
-          echo "::set-output name=repository_name::$REPOSITORY_NAME"
-          echo "::set-output name=registry_username::$REGISTRY_USERNAME"
-          echo "::set-output name=registry_password::$REGISTRY_PASSWORD"
-          echo "::set-output name=ssh_user::ec2-user"
+          echo "RAW_SERVER=[$REGISTRY_SERVER]"
+
+          # 🔥 Guardar en ENV (lo más estable en GitHub Actions)
+          echo "VM_IP=$VM_IP" >> $GITHUB_ENV
+          echo "REGISTRY_SERVER=$REGISTRY_SERVER" >> $GITHUB_ENV
+          echo "REPOSITORY_NAME=$REPOSITORY_NAME" >> $GITHUB_ENV
+          echo "REGISTRY_USERNAME=$REGISTRY_USERNAME" >> $GITHUB_ENV
+          echo "REGISTRY_PASSWORD=$REGISTRY_PASSWORD" >> $GITHUB_ENV
+          echo "SSH_USER=ec2-user" >> $GITHUB_ENV
+
+      - name: Export Step Outputs (bridge to reusable workflow)
+        id: export_outputs
+        shell: bash
+        run: |
+          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
+          echo "registry_server=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
+          echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
+          echo "registry_username=$REGISTRY_USERNAME" >> $GITHUB_OUTPUT
+          echo "registry_password=$REGISTRY_PASSWORD" >> $GITHUB_OUTPUT
+          echo "ssh_user=$SSH_USER" >> $GITHUB_OUTPUT
 
       - name: Debug Step Outputs
         run: |
-          echo "======================================="
-          echo "STEP OUTPUTS"
-          echo "======================================="
-          echo "VM_IP=${{ steps.tf_outputs.outputs.vm_ip }}"
-          echo "REGISTRY_SERVER=${{ steps.tf_outputs.outputs.registry_server }}"
-          echo "REPOSITORY_NAME=${{ steps.tf_outputs.outputs.repository_name }}"
-          echo "REGISTRY_USERNAME=${{ steps.tf_outputs.outputs.registry_username }}"
-          echo "SSH_USER=${{ steps.tf_outputs.outputs.ssh_user }}"
-          echo "======================================="
-
-      - name: Debug Raw Variables
-        run: |
-          echo "SERVER=[${{ steps.tf_outputs.outputs.registry_server }}]"
-          echo "REPOSITORY=[${{ steps.tf_outputs.outputs.repository_name }}]"
+          echo "VM_IP=${{ steps.export_outputs.outputs.vm_ip }}"
+          echo "REGISTRY_SERVER=${{ steps.export_outputs.outputs.registry_server }}"
+          echo "REPOSITORY_NAME=${{ steps.export_outputs.outputs.repository_name }}"
+          echo "REGISTRY_USERNAME=${{ steps.export_outputs.outputs.registry_username }}"
+          echo "SSH_USER=${{ steps.export_outputs.outputs.ssh_user }}"
