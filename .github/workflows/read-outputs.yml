@@ -29,6 +29,7 @@ on:
 
 jobs:
   outputs:
+
     runs-on: ubuntu-latest
 
     outputs:
@@ -39,6 +40,7 @@ jobs:
       ssh_user: ${{ steps.tf_outputs.outputs.ssh_user }}
 
     steps:
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -67,6 +69,7 @@ jobs:
         id: tf_outputs
         working-directory: ${{ inputs.working-directory }}
         run: |
+
           echo "=== TERRAFORM RAW OUTPUTS ==="
           terraform output
 
@@ -77,7 +80,9 @@ jobs:
           echo "registry_url=$(terraform output -raw registry_url)" >> $GITHUB_OUTPUT
           echo "registry_username=$(terraform output -raw registry_username)" >> $GITHUB_OUTPUT
           echo "registry_password=$(terraform output -raw registry_password)" >> $GITHUB_OUTPUT
-          echo "ssh_user=$(terraform output -raw ssh_user)" >> $GITHUB_OUTPUT
+
+          # AWS usa ec2-user por defecto en Amazon Linux
+          echo "ssh_user=ec2-user" >> $GITHUB_OUTPUT
 
       - name: Debug Step Outputs
         run: |
