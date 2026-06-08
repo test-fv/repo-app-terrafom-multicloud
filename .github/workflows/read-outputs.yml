@@ -37,12 +37,12 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      vm_ip: ${{ steps.export.outputs.vm_ip }}
-      registry_server: ${{ steps.export.outputs.registry_server }}
-      repository_name: ${{ steps.export.outputs.repository_name }}
-      registry_username: ${{ steps.export.outputs.registry_username }}
-      registry_password: ${{ steps.export.outputs.registry_password }}
-      ssh_user: ${{ steps.export.outputs.ssh_user }}
+      vm_ip: ${{ steps.tf.outputs.vm_ip }}
+      registry_server: ${{ steps.tf.outputs.registry_server }}
+      repository_name: ${{ steps.tf.outputs.repository_name }}
+      registry_username: ${{ steps.tf.outputs.registry_username }}
+      registry_password: ${{ steps.tf.outputs.registry_password }}
+      ssh_user: ${{ steps.tf.outputs.ssh_user }}
 
     steps:
 
@@ -65,7 +65,7 @@ jobs:
         run: terraform init -reconfigure -input=false
 
       - name: Read Terraform Outputs
-        id: export
+        id: tf
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
@@ -83,29 +83,11 @@ jobs:
 
           echo "RAW_SERVER=[$REGISTRY_SERVER]"
 
-          # 🔥 Guardar en ENV (lo más estable en GitHub Actions)
-          echo "VM_IP=$VM_IP" >> $GITHUB_ENV
-          echo "REGISTRY_SERVER=$REGISTRY_SERVER" >> $GITHUB_ENV
-          echo "REPOSITORY_NAME=$REPOSITORY_NAME" >> $GITHUB_ENV
-          echo "REGISTRY_USERNAME=$REGISTRY_USERNAME" >> $GITHUB_ENV
-          echo "REGISTRY_PASSWORD=$REGISTRY_PASSWORD" >> $GITHUB_ENV
-          echo "SSH_USER=ec2-user" >> $GITHUB_ENV
-
-      - name: Export Step Outputs (bridge to reusable workflow)
-        id: export_outputs
-        shell: bash
-        run: |
-          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
-          echo "registry_server=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
-          echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
-          echo "registry_username=$REGISTRY_USERNAME" >> $GITHUB_OUTPUT
-          echo "registry_password=$REGISTRY_PASSWORD" >> $GITHUB_OUTPUT
-          echo "ssh_user=$SSH_USER" >> $GITHUB_OUTPUT
-
-      - name: Debug Step Outputs
-        run: |
-          echo "VM_IP=${{ steps.export_outputs.outputs.vm_ip }}"
-          echo "REGISTRY_SERVER=${{ steps.export_outputs.outputs.registry_server }}"
-          echo "REPOSITORY_NAME=${{ steps.export_outputs.outputs.repository_name }}"
-          echo "REGISTRY_USERNAME=${{ steps.export_outputs.outputs.registry_username }}"
-          echo "SSH_USER=${{ steps.export_outputs.outputs.ssh_user }}"
+          {
+            echo "vm_ip=$VM_IP"
+            echo "registry_server=$REGISTRY_SERVER"
+            echo "repository_name=$REPOSITORY_NAME"
+            echo "registry_username=$REGISTRY_USERNAME"
+            echo "registry_password=$REGISTRY_PASSWORD"
+            echo "ssh_user=ec2-user"
+          } >> "$GITHUB_OUTPUT"
