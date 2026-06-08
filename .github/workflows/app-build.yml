@@ -38,17 +38,6 @@ jobs:
         working-directory: app
         run: mvn clean package
 
-      - name: Azure Login
-        if: inputs.cloud-provider == 'azure'
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      - name: Azure Container Registry Login
-        if: inputs.cloud-provider == 'azure'
-        run: |
-          az acr login --name ${{ secrets.TF_VAR_acr_name }}
-
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
@@ -57,31 +46,53 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Debug Registry
+      - name: Debug Inputs (SAFE)
         run: |
-          echo "SERVER=${{ inputs.registry-server }}"
-          echo "REPOSITORY=${{ inputs.repository-name }}"
+          echo "registry-server length=${#REGISTRY_SERVER}"
+          echo "repository=${REPOSITORY_NAME}"
+        env:
+          REGISTRY_SERVER: ${{ inputs.registry-server }}
+          REPOSITORY_NAME: ${{ inputs.repository-name }}
+
+      - name: FAIL FAST CHECK
+        run: |
+          if [ -z "${REGISTRY_SERVER}" ]; then
+            echo "❌ registry-server is EMPTY (input not passed)"
+            exit 1
+          fi
+        env:
+          REGISTRY_SERVER: ${{ inputs.registry-server }}
 
       - name: AWS ECR Login
         if: inputs.cloud-provider == 'aws'
+        shell: bash
         run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+          set -euo pipefail
+
+          aws ecr get-login-password --region $AWS_REGION \
           | docker login \
-            --username AWS \
-            --password-stdin \
-            ${{ inputs.registry-server }}
+              --username AWS \
+              --password-stdin \
+              "$REGISTRY_SERVER"
+        env:
+          REGISTRY_SERVER: ${{ inputs.registry-server }}
 
       - name: Docker Build
         run: |
-          IMAGE="${{ inputs.registry-server }}/${{ inputs.repository-name }}"
+          IMAGE="$REGISTRY_SERVER/$REPOSITORY_NAME"
 
           docker build \
             -t ${IMAGE}:latest \
             ./app
+        env:
+          REGISTRY_SERVER: ${{ inputs.registry-server }}
+          REPOSITORY_NAME: ${{ inputs.repository-name }}
 
       - name: Docker Push
         run: |
-          IMAGE="${{ inputs.registry-server }}/${{ inputs.repository-name }}"
+          IMAGE="$REGISTRY_SERVER/$REPOSITORY_NAME"
 
-          docker push \
-            ${IMAGE}:latest
+          docker push ${IMAGE}:latest
+        env:
+          REGISTRY_SERVER: ${{ inputs.registry-server }}
+          REPOSITORY_NAME: ${{ inputs.repository-name }}
