@@ -7,11 +7,9 @@ on:
       cloud-provider:
         required: true
         type: string
-
       registry-server:
         required: true
         type: string
-
       repository-name:
         required: true
         type: string
@@ -28,10 +26,6 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Build
-        working-directory: app
-        run: mvn clean package
-
       - name: Validate input
         run: |
           if [ -z "${{ inputs.registry-server }}" ]; then
@@ -39,7 +33,7 @@ jobs:
             exit 1
           fi
 
-      - name: AWS ECR Login
+      - name: AWS Login
         if: inputs.cloud-provider == 'aws'
         run: |
           aws ecr get-login-password --region $AWS_REGION \

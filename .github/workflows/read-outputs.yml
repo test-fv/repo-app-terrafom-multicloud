@@ -6,6 +6,7 @@ on:
       cloud-provider:
         required: true
         type: string
+
       working-directory:
         required: true
         type: string
@@ -29,15 +30,25 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      vm_ip: ${{ steps.step.outputs.vm_ip }}
-      registry_server: ${{ steps.step.outputs.registry_server }}
-      repository_name: ${{ steps.step.outputs.repository_name }}
-      registry_username: ${{ steps.step.outputs.registry_username }}
-      registry_password: ${{ steps.step.outputs.registry_password }}
-      ssh_user: ${{ steps.step.outputs.ssh_user }}
+      vm_ip: ${{ steps.tf.outputs.vm_ip }}
+      registry_server: ${{ steps.tf.outputs.registry_server }}
+      repository_name: ${{ steps.tf.outputs.repository_name }}
+      registry_username: ${{ steps.tf.outputs.registry_username }}
+      registry_password: ${{ steps.tf.outputs.registry_password }}
+      ssh_user: ${{ steps.tf.outputs.ssh_user }}
 
     steps:
       - uses: actions/checkout@v4
+
+      # 🔥 CRÍTICO: credenciales ANTES de terraform init (S3 backend)
+      - name: Configure AWS Credentials
+        if: inputs.cloud-provider == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
@@ -45,31 +56,31 @@ jobs:
         run: terraform init -reconfigure -input=false
 
       - name: Read Terraform Outputs
-        id: step
+        id: tf
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
           set -euo pipefail
 
-          echo "=== RAW TERRAFORM OUTPUT ==="
-          terraform output
+          echo "=== TERRAFORM OUTPUT ==="
+          terraform output || true
 
           VM_IP=$(terraform output -raw vm_ip 2>/dev/null || true)
           REGISTRY_SERVER=$(terraform output -raw registry_server 2>/dev/null || true)
-          REPO=$(terraform output -raw repository_name 2>/dev/null || true)
-          USER=$(terraform output -raw registry_username 2>/dev/null || true)
-          PASS=$(terraform output -raw registry_password 2>/dev/null || true)
+          REPOSITORY_NAME=$(terraform output -raw repository_name 2>/dev/null || true)
+          REGISTRY_USERNAME=$(terraform output -raw registry_username 2>/dev/null || true)
+          REGISTRY_PASSWORD=$(terraform output -raw registry_password 2>/dev/null || true)
 
-          echo "REGISTRY_SERVER=[$REGISTRY_SERVER]"
+          echo "DEBUG registry_server=[$REGISTRY_SERVER]"
 
           if [ -z "$REGISTRY_SERVER" ]; then
-            echo "❌ TERRAFORM NO ESTÁ DEVOLVIENDO registry_server"
+            echo "❌ registry_server vacío (Terraform state o output incorrecto)"
             exit 1
           fi
 
           echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
           echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
-          echo "repository_name=$REPO" >> "$GITHUB_OUTPUT"
-          echo "registry_username=$USER" >> "$GITHUB_OUTPUT"
-          echo "registry_password=$PASS" >> "$GITHUB_OUTPUT"
+          echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
+          echo "registry_username=$REGISTRY_USERNAME" >> "$GITHUB_OUTPUT"
+          echo "registry_password=$REGISTRY_PASSWORD" >> "$GITHUB_OUTPUT"
           echo "ssh_user=ec2-user" >> "$GITHUB_OUTPUT"
