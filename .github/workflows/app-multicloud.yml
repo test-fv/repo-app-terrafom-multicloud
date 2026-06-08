@@ -25,11 +25,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Show outputs
+      - name: Debug outputs
         run: |
-          echo "VM_IP=${{ needs.outputs.vm_ip }}"
-          echo "REGISTRY_SERVER=${{ needs.outputs.registry_server }}"
-          echo "REPOSITORY=${{ needs.outputs.repository_name }}"
+          echo "VM_IP='${{ needs.outputs.vm_ip }}'"
+          echo "REGISTRY_SERVER='${{ needs.outputs.registry_server }}'"
+          echo "REPOSITORY='${{ needs.outputs.repository_name }}'"
 
 
   build:

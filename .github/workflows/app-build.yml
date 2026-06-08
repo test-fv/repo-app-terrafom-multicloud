@@ -7,9 +7,11 @@ on:
       cloud-provider:
         required: true
         type: string
+
       registry-server:
         required: true
         type: string
+
       repository-name:
         required: true
         type: string
@@ -31,16 +33,14 @@ jobs:
         run: mvn clean package
 
       - name: Validate input
-        shell: bash
         run: |
           if [ -z "${{ inputs.registry-server }}" ]; then
             echo "❌ registry-server vacío"
             exit 1
           fi
 
-      - name: AWS Login
+      - name: AWS ECR Login
         if: inputs.cloud-provider == 'aws'
-        shell: bash
         run: |
           aws ecr get-login-password --region $AWS_REGION \
           | docker login \
@@ -48,12 +48,12 @@ jobs:
             --password-stdin \
             "${{ inputs.registry-server }}"
 
-      - name: Docker Build
+      - name: Build image
         run: |
           docker build \
             -t "${{ inputs.registry-server }}/${{ inputs.repository-name }}:latest" \
             ./app
 
-      - name: Docker Push
+      - name: Push image
         run: |
           docker push "${{ inputs.registry-server }}/${{ inputs.repository-name }}:latest"
