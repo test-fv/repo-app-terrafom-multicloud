@@ -90,6 +90,12 @@ jobs:
           REGISTRY_PASSWORD=$(terraform output -raw registry_password)
 
           echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
+          
+          echo "DEBUG RAW=[${REGISTRY_SERVER}]"
+          echo "DEBUG LEN=${#REGISTRY_SERVER}"
+          printf "DEBUG BYTES:\n"
+          echo -n "$REGISTRY_SERVER" | od -An -tx1
+
           echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
           echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
           echo "registry_username=$REGISTRY_USERNAME" >> "$GITHUB_OUTPUT"
