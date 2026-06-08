@@ -28,6 +28,7 @@ on:
         value: ${{ jobs.outputs.outputs.ssh_user }}
 
 jobs:
+
   outputs:
 
     runs-on: ubuntu-latest
@@ -73,16 +74,33 @@ jobs:
           echo "=== TERRAFORM RAW OUTPUTS ==="
           terraform output
 
-          echo "=== registry_url ==="
-          terraform output -raw registry_url || true
+          VM_IP=$(terraform output -raw vm_ip)
+          REGISTRY_URL=$(terraform output -raw registry_url)
+          REGISTRY_USERNAME=$(terraform output -raw registry_username)
+          REGISTRY_PASSWORD=$(terraform output -raw registry_password)
 
-          echo "vm_ip=$(terraform output -raw vm_ip)" >> $GITHUB_OUTPUT
-          echo "registry_url=$(terraform output -raw registry_url)" >> $GITHUB_OUTPUT
-          echo "registry_username=$(terraform output -raw registry_username)" >> $GITHUB_OUTPUT
-          echo "registry_password=$(terraform output -raw registry_password)" >> $GITHUB_OUTPUT
+          {
+            echo "vm_ip<<EOF"
+            echo "$VM_IP"
+            echo "EOF"
 
-          # AWS usa ec2-user por defecto en Amazon Linux
-          echo "ssh_user=ec2-user" >> $GITHUB_OUTPUT
+            echo "registry_url<<EOF"
+            echo "$REGISTRY_URL"
+            echo "EOF"
+
+            echo "registry_username<<EOF"
+            echo "$REGISTRY_USERNAME"
+            echo "EOF"
+
+            echo "registry_password<<EOF"
+            echo "$REGISTRY_PASSWORD"
+            echo "EOF"
+
+            echo "ssh_user<<EOF"
+            echo "ec2-user"
+            echo "EOF"
+
+          } >> "$GITHUB_OUTPUT"
 
       - name: Debug Step Outputs
         run: |
