@@ -67,6 +67,13 @@ jobs:
         id: outputs
         working-directory: ${{ inputs.working-directory }}
         run: |
+          echo "=== TERRAFORM RAW OUTPUTS ==="
+          
+          terraform output
+          
+          echo "=== registry_url ==="
+          terraform output -raw registry_url
+          
           echo "vm_ip=$(terraform output -raw vm_ip)" >> $GITHUB_OUTPUT
           echo "registry_url=$(terraform output -raw registry_url)" >> $GITHUB_OUTPUT
           echo "registry_username=$(terraform output -raw registry_username)" >> $GITHUB_OUTPUT
