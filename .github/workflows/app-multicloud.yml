@@ -8,15 +8,14 @@ on:
         type: choice
         options:
           - aws
-          - azure
 
 jobs:
 
   outputs:
     uses: ./.github/workflows/read-outputs.yml
     with:
-      cloud-provider: ${{ github.event.inputs.cloud }}
-      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
+      cloud-provider: aws
+      working-directory: terraform/environments/aws/prod
     secrets: inherit
 
 
@@ -37,7 +36,7 @@ jobs:
     uses: ./.github/workflows/app-build.yml
 
     with:
-      cloud-provider: ${{ github.event.inputs.cloud }}
+      cloud-provider: aws
       registry-server: ${{ needs.outputs.registry_server }}
       repository-name: ${{ needs.outputs.repository_name }}
 
@@ -49,7 +48,7 @@ jobs:
     uses: ./.github/workflows/app-deploy.yml
 
     with:
-      cloud-provider: ${{ github.event.inputs.cloud }}
+      cloud-provider: aws
       vm-ip: ${{ needs.outputs.vm_ip }}
       ssh-user: ${{ needs.outputs.ssh_user }}
       registry-url: ${{ needs.outputs.registry_server }}/${{ needs.outputs.repository_name }}

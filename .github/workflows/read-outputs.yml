@@ -40,7 +40,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 🔥 CRÍTICO: credenciales ANTES de terraform init (S3 backend)
+      # 🔥 SOLO AWS (Azure bloqueado completamente)
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
@@ -49,20 +49,27 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      - name: FAIL SAFE (NO AZURE)
+        run: |
+          if [ "${{ inputs.cloud-provider }}" != "aws" ]; then
+            echo "❌ SOLO AWS ACTIVO EN ESTE PIPELINE"
+            exit 1
+          fi
+
       - uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         working-directory: ${{ inputs.working-directory }}
         run: terraform init -reconfigure -input=false
 
-      - name: Read Terraform Outputs
+      - name: Terraform Outputs
         id: tf
         working-directory: ${{ inputs.working-directory }}
         shell: bash
         run: |
           set -euo pipefail
 
-          echo "=== TERRAFORM OUTPUT ==="
+          echo "=== RAW TERRAFORM OUTPUT ==="
           terraform output || true
 
           VM_IP=$(terraform output -raw vm_ip 2>/dev/null || true)
@@ -74,13 +81,15 @@ jobs:
           echo "DEBUG registry_server=[$REGISTRY_SERVER]"
 
           if [ -z "$REGISTRY_SERVER" ]; then
-            echo "❌ registry_server vacío (Terraform state o output incorrecto)"
+            echo "❌ registry_server vacío desde Terraform"
             exit 1
           fi
 
-          echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
-          echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
-          echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
-          echo "registry_username=$REGISTRY_USERNAME" >> "$GITHUB_OUTPUT"
-          echo "registry_password=$REGISTRY_PASSWORD" >> "$GITHUB_OUTPUT"
-          echo "ssh_user=ec2-user" >> "$GITHUB_OUTPUT"
+          {
+            echo "vm_ip=$VM_IP"
+            echo "registry_server=$REGISTRY_SERVER"
+            echo "repository_name=$REPOSITORY_NAME"
+            echo "registry_username=$REGISTRY_USERNAME"
+            echo "registry_password=$REGISTRY_PASSWORD"
+            echo "ssh_user=ec2-user"
+          } >> "$GITHUB_OUTPUT"

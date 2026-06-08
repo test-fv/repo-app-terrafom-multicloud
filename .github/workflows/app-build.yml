@@ -7,9 +7,11 @@ on:
       cloud-provider:
         required: true
         type: string
+
       registry-server:
         required: true
         type: string
+
       repository-name:
         required: true
         type: string
@@ -26,7 +28,7 @@ jobs:
           distribution: temurin
           java-version: 17
 
-      - name: Validate input
+      - name: Validate inputs
         run: |
           if [ -z "${{ inputs.registry-server }}" ]; then
             echo "❌ registry-server vacío"
@@ -34,7 +36,6 @@ jobs:
           fi
 
       - name: AWS Login
-        if: inputs.cloud-provider == 'aws'
         run: |
           aws ecr get-login-password --region $AWS_REGION \
           | docker login \
