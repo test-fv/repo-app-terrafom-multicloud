@@ -38,7 +38,8 @@ jobs:
       ssh_user: ${{ steps.outputs.outputs.ssh_user }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
@@ -48,7 +49,8 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - uses: hashicorp/setup-terraform@v3
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         working-directory: ${{ inputs.working-directory }}
@@ -61,19 +63,14 @@ jobs:
         run: |
           set -euo pipefail
 
-          VM_IP=$(terraform output -raw vm_ip 2>/dev/null || true)
-          REGISTRY_SERVER=$(terraform output -raw registry_server 2>/dev/null || true)
-          REPOSITORY_NAME=$(terraform output -raw repository_name 2>/dev/null || true)
-          REGISTRY_USERNAME=$(terraform output -raw registry_username 2>/dev/null || true)
-          REGISTRY_PASSWORD=$(terraform output -raw registry_password 2>/dev/null || true)
+          echo "=== TERRAFORM OUTPUT DEBUG ==="
+          terraform output || true
 
-          echo "registry_server=[$REGISTRY_SERVER]"
-          echo "vm_ip=[$VM_IP]"
-
-          if [ -z "$REGISTRY_SERVER" ]; then
-            echo "❌ registry_server vacío desde Terraform"
-            exit 1
-          fi
+          VM_IP=$(terraform output -raw vm_ip)
+          REGISTRY_SERVER=$(terraform output -raw registry_server)
+          REPOSITORY_NAME=$(terraform output -raw repository_name)
+          REGISTRY_USERNAME=$(terraform output -raw registry_username)
+          REGISTRY_PASSWORD=$(terraform output -raw registry_password)
 
           echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
           echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
