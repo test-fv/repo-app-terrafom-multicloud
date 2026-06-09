@@ -66,74 +66,17 @@ jobs:
         working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
         run: terraform init -reconfigure -input=false
 
-      # ======================================
-      # DEBUG DE ARCHIVOS
-      # ======================================
-      - name: Debug Terraform Files
-        working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
-        run: |
-          echo "=============================="
-          echo "PWD"
-          echo "=============================="
-          pwd
-
-          echo "=============================="
-          echo "FILES"
-          echo "=============================="
-          ls -la
-
-          echo "=============================="
-          echo "locals.tf"
-          echo "=============================="
-          cat locals.tf || true
-
-          echo "=============================="
-          echo "providers.tf"
-          echo "=============================="
-          cat providers.tf || true
-
-          echo "=============================="
-          echo "variables.tf"
-          echo "=============================="
-          cat variables.tf || true
-
-          echo "=============================="
-          echo "main.tf"
-          echo "=============================="
-          cat main.tf || true
-
-      # ======================================
-      # AUTO UNLOCK (OPCIONAL)
-      # ======================================
       - name: Force Unlock State (optional)
         if: ${{ github.event.inputs.force_unlock == true }}
         working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
         run: |
           terraform force-unlock -force cfe8ea1c-f38b-800a-c34f-757040819a56 || true
 
-      # ======================================
-      # PLAN DE DEBUG
-      # ======================================
-      - name: Terraform Plan Debug
-        working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
-        run: |
-          terraform plan -input=false -no-color
-
-      # ======================================
-      # OUTPUTS
-      # ======================================
-      - name: Terraform Outputs
-        working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
-        run: |
-          terraform output || true
-          terraform output -json || true
-
-      # ======================================
-      # APPLY
-      # ======================================
       - name: Terraform Apply
         working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
         run: |
           terraform apply \
             -auto-approve \
-            -input=false
+            -input=false \
+            -var="instance_type=t3.micro" \
+            -var="repository_name=myapp"

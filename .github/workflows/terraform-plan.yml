@@ -33,28 +33,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Workflow Version
-        run: |
-          echo "############################################"
-          echo "TERRAFORM PLAN WORKFLOW VERSION 2026-06-09"
-          echo "############################################"
-
-      - name: Debug Working Directory
-        run: |
-          echo "===== PWD ====="
-          pwd
-
-          echo "===== FILES ====="
-          ls -la
-
-      - name: Debug TF Vars
-        run: |
-          echo "=================================="
-          echo "TF_VAR_instance_type=[$TF_VAR_instance_type]"
-          echo "TF_VAR_repository_name=[$TF_VAR_repository_name]"
-          echo "TF_VAR_aws_region=[$TF_VAR_aws_region]"
-          echo "=================================="
-
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
@@ -83,8 +61,8 @@ jobs:
 
       - name: Terraform Plan
         run: |
-         terraform plan \
-           -input=false \
-           -no-color \
-           -var="instance_type=t3.micro" \
-           -var="repository_name=myapp"
+          terraform plan \
+            -input=false \
+            -no-color \
+            -var="instance_type=t3.micro" \
+            -var="repository_name=myapp"
