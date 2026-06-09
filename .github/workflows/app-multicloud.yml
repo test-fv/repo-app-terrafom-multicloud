@@ -126,16 +126,26 @@ jobs:
           VM_IP=$(jq -r '.vm_ip.value' outputs.json)
           IMAGE_FULL=$(jq -r '.registry_server.value + "/" + .repository_name.value' outputs.json)
 
+          # 🔐 SSH KEY DESDE TERRAFORM
+          SSH_PRIVATE_KEY=$(jq -r '.ssh_private_key.value' outputs.json)
+
           echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
           echo "image=$IMAGE_FULL" >> $GITHUB_OUTPUT
+
+          # IMPORTANT: multiline safe output
+          echo "ssh_private_key<<EOF" >> $GITHUB_OUTPUT
+          echo "$SSH_PRIVATE_KEY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Trigger Remote Deployment (VM CD)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ steps.ctx.outputs.vm_ip }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.VM_SSH_KEY }}
+          username: ubuntu
+          key: ${{ steps.ctx.outputs.ssh_private_key }}
+
           envs: CLOUD_PROVIDER,REGISTRY_SERVER,IMAGE
+
           script: |
             set -e
 

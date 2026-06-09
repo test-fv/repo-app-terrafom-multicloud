@@ -1,56 +1,157 @@
-name: Terraform Infrastructure
+name: Multi Cloud Application Delivery
 
 on:
   workflow_dispatch:
-
     inputs:
-
       cloud:
         required: true
         type: choice
-
         options:
-          - azure
           - aws
-
-      environment:
-        required: true
-        type: choice
-
-        options:
-          - dev
-          - prod
+          - azure
 
 concurrency:
-  group: terraform-${{ github.event.inputs.cloud }}-${{ github.event.inputs.environment }}
-
+  group: app-${{ github.event.inputs.cloud }}
   cancel-in-progress: false
 
 jobs:
 
-  plan:
-
-    uses: ./.github/workflows/terraform-plan.yml
-
+  terraform:
+    uses: ./.github/workflows/read-outputs.yml
     with:
-
       cloud-provider: ${{ github.event.inputs.cloud }}
-
-      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
-
+      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
     secrets: inherit
 
-  apply:
 
-    needs: plan
+  build:
+    needs: terraform
+    runs-on: ubuntu-latest
 
-    uses: ./.github/workflows/terraform-apply.yml
+    steps:
 
-    with:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      cloud-provider: ${{ github.event.inputs.cloud }}
+      - name: Download Terraform Outputs Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs-${{ github.event.inputs.cloud }}
 
-      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
+      - name: Parse Terraform Outputs
+        id: tf
+        shell: bash
+        run: |
+          set -euo pipefail
 
-    secrets: inherit
-    
+          REGISTRY_SERVER=$(jq -r '.registry_server.value' outputs.json)
+          REPOSITORY_NAME=$(jq -r '.repository_name.value' outputs.json)
+          VM_IP=$(jq -r '.vm_ip.value' outputs.json)
+
+          IMAGE="${REGISTRY_SERVER}/${REPOSITORY_NAME}"
+
+          echo "registry_server=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
+          echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
+          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Validate Workspace
+        run: |
+          echo "=== PROJECT STRUCTURE ==="
+          ls -la
+
+          if [ ! -d "app" ]; then
+            echo "❌ ERROR: ./app directory not found"
+            exit 1
+          fi
+
+      - name: Build Docker Image
+        run: |
+          docker build -t ${{ steps.tf.outputs.image }}:latest ./app
+
+
+      # =========================
+      # AWS LOGIN
+      # =========================
+      - name: Configure AWS Credentials
+        if: ${{ github.event.inputs.cloud == 'aws' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to AWS ECR
+        if: ${{ github.event.inputs.cloud == 'aws' }}
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+          | docker login \
+            --username AWS \
+            --password-stdin \
+            ${{ steps.tf.outputs.registry_server }}
+
+      # =========================
+      # AZURE PLACEHOLDER
+      # =========================
+      - name: Azure Login Placeholder
+        if: ${{ github.event.inputs.cloud == 'azure' }}
+        run: echo "Azure handled externally"
+
+      - name: Push Docker Image
+        run: |
+          docker push ${{ steps.tf.outputs.image }}:latest
+
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Download Terraform Outputs Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs-${{ github.event.inputs.cloud }}
+
+      - name: Parse Deployment Context
+        id: ctx
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VM_IP=$(jq -r '.vm_ip.value' outputs.json)
+          IMAGE_FULL=$(jq -r '.registry_server.value + "/" + .repository_name.value' outputs.json)
+
+          # 🔐 SSH KEY FROM TERRAFORM OUTPUT
+          SSH_PRIVATE_KEY=$(jq -r '.ssh_private_key.value' outputs.json)
+
+          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE_FULL" >> $GITHUB_OUTPUT
+
+          # SAFE MULTILINE OUTPUT
+          echo "ssh_private_key<<EOF" >> $GITHUB_OUTPUT
+          echo "$SSH_PRIVATE_KEY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Trigger Remote Deployment (VM CD)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.ctx.outputs.vm_ip }}
+          username: ubuntu
+          key: ${{ steps.ctx.outputs.ssh_private_key }}
+
+          script: |
+            set -e
+
+            export CLOUD_PROVIDER="${{ github.event.inputs.cloud }}"
+            export REGISTRY_URL=$(echo "${{ steps.ctx.outputs.image }}" | cut -d'/' -f1)
+            export IMAGE_NAME=$(echo "${{ steps.ctx.outputs.image }}" | cut -d'/' -f2)
+            export IMAGE_TAG="latest"
+            export CONTAINER_NAME="myapp"
+
+            echo "REGISTRY_URL=$REGISTRY_URL"
+            echo "IMAGE_NAME=$IMAGE_NAME"
+
+            chmod +x ~/app/contracts/runtime/deploy.sh
+
+            ~/app/contracts/runtime/deploy.sh
