@@ -8,7 +8,6 @@ on:
       cloud:
         required: true
         type: choice
-
         options:
           - azure
           - aws
@@ -16,14 +15,13 @@ on:
       environment:
         required: true
         type: choice
-
         options:
           - dev
           - prod
 
+# 🔥 EVITA EJECUCIONES PARALELAS (CLAVE PARA TU ERROR DE LOCK)
 concurrency:
   group: terraform-${{ github.event.inputs.cloud }}-${{ github.event.inputs.environment }}
-
   cancel-in-progress: false
 
 jobs:
@@ -53,4 +51,3 @@ jobs:
       working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
 
     secrets: inherit
-    
