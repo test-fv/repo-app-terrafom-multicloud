@@ -21,11 +21,11 @@ on:
         required: true
         type: string
 
-      registry-username:
+      image-name:
         required: true
         type: string
 
-      registry-password:
+      image-tag:
         required: true
         type: string
 
@@ -36,38 +36,38 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-
       CLOUD_PROVIDER: ${{ inputs.cloud-provider }}
-
       REGISTRY_URL: ${{ inputs.registry-url }}
-
-      REGISTRY_USERNAME: ${{ inputs.registry-username }}
-
-      REGISTRY_PASSWORD: ${{ inputs.registry-password }}
-
-      IMAGE_NAME: myapp
-
-      IMAGE_TAG: latest
-
+      IMAGE_NAME: ${{ inputs.image-name }}
+      IMAGE_TAG: ${{ inputs.image-tag }}
       CONTAINER_NAME: myapp
 
     steps:
 
-      - name: Deploy Application
+      - name: Validate Inputs
+        run: |
+          echo "CLOUD_PROVIDER=$CLOUD_PROVIDER"
+          echo "REGISTRY_URL=$REGISTRY_URL"
+          echo "IMAGE_NAME=$IMAGE_NAME"
+          echo "IMAGE_TAG=$IMAGE_TAG"
 
+      - name: SSH Deploy to VM
         uses: appleboy/ssh-action@v1.0.3
-
         with:
-
           host: ${{ inputs.vm-ip }}
-
           username: ${{ inputs.ssh-user }}
-
           key: ${{ secrets.VM_SSH_KEY }}
-
-          envs: CLOUD_PROVIDER,REGISTRY_URL,REGISTRY_USERNAME,REGISTRY_PASSWORD,IMAGE_NAME,IMAGE_TAG,CONTAINER_NAME
-
+          envs: CLOUD_PROVIDER,REGISTRY_URL,IMAGE_NAME,IMAGE_TAG,CONTAINER_NAME
           script: |
+            set -e
+
+            echo "Connecting to remote deploy..."
+
+            if [ ! -f ~/app/contracts/runtime/deploy.sh ]; then
+              echo "ERROR: deploy.sh not found on VM"
+              exit 1
+            fi
+
             chmod +x ~/app/contracts/runtime/deploy.sh
 
             ~/app/contracts/runtime/deploy.sh

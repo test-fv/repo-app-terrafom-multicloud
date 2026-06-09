@@ -38,12 +38,6 @@ jobs:
         with:
           name: tf-outputs-${{ github.event.inputs.cloud }}
 
-      - name: Validate Terraform Outputs File
-        run: |
-          echo "=== OUTPUT FILE ==="
-          ls -la
-          cat outputs.json
-
       - name: Parse Terraform Outputs
         id: tf
         shell: bash
@@ -52,38 +46,22 @@ jobs:
 
           REGISTRY_SERVER=$(jq -r '.registry_server.value' outputs.json)
           REPOSITORY_NAME=$(jq -r '.repository_name.value' outputs.json)
-          REGISTRY_USERNAME=$(jq -r '.registry_username.value' outputs.json)
-          REGISTRY_PASSWORD=$(jq -r '.registry_password.value' outputs.json)
           VM_IP=$(jq -r '.vm_ip.value' outputs.json)
-
-          # VALIDACIÓN REAL (NO SILENCIOSA)
-          if [ -z "$REGISTRY_SERVER" ]; then
-            echo "❌ registry_server vacío desde Terraform"
-            exit 1
-          fi
 
           IMAGE="${REGISTRY_SERVER}/${REPOSITORY_NAME}"
 
-          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
           echo "registry_server=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
           echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
-          echo "registry_username=$REGISTRY_USERNAME" >> $GITHUB_OUTPUT
-          echo "registry_password=$REGISTRY_PASSWORD" >> $GITHUB_OUTPUT
+          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
 
-      - name: Debug Final Values
+      - name: Validate Workspace
         run: |
-          echo "VM: ${{ steps.tf.outputs.vm_ip }}"
-          echo "IMAGE: ${{ steps.tf.outputs.image }}"
-          echo "REGISTRY: ${{ steps.tf.outputs.registry_server }}"
-
-      - name: Validate Docker Context
-        run: |
-          echo "Validating project structure..."
+          echo "=== PROJECT STRUCTURE ==="
           ls -la
 
           if [ ! -d "app" ]; then
-            echo "❌ Folder ./app not found"
+            echo "❌ ERROR: ./app directory not found"
             exit 1
           fi
 
@@ -93,12 +71,35 @@ jobs:
         run: |
           docker build -t ${{ steps.tf.outputs.image }}:latest ./app
 
-      - name: Login to Registry (AWS/Azure)
+
+      # =========================
+      # AWS LOGIN (ECR REAL)
+      # =========================
+      - name: Configure AWS Credentials
+        if: ${{ github.event.inputs.cloud == 'aws' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to AWS ECR
+        if: ${{ github.event.inputs.cloud == 'aws' }}
         run: |
-          echo "${{ steps.tf.outputs.registry_password }}" | docker login \
-            --username "${{ steps.tf.outputs.registry_username }}" \
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
+          | docker login \
+            --username AWS \
             --password-stdin \
-            "${{ steps.tf.outputs.registry_server }}"
+            ${{ steps.tf.outputs.registry_server }}
+
+
+      # =========================
+      # AZURE (PLACEHOLDER LIMPIO)
+      # =========================
+      - name: Login to Azure ACR
+        if: ${{ github.event.inputs.cloud == 'azure' }}
+        run: |
+          echo "Azure login handled externally (Terraform/Managed Identity)"
 
       - name: Push Docker Image
         run: |
@@ -116,16 +117,37 @@ jobs:
         with:
           name: tf-outputs-${{ github.event.inputs.cloud }}
 
-      - name: Show Deployment Context
+      - name: Parse Deployment Context
+        id: ctx
+        shell: bash
         run: |
-          echo "=== DEPLOY INFO ==="
-          cat outputs.json
+          set -euo pipefail
 
           VM_IP=$(jq -r '.vm_ip.value' outputs.json)
-          REGISTRY_SERVER=$(jq -r '.registry_server.value' outputs.json)
-          REPOSITORY_NAME=$(jq -r '.repository_name.value' outputs.json)
+          IMAGE_FULL=$(jq -r '.registry_server.value + "/" + .repository_name.value' outputs.json)
 
-          IMAGE="${REGISTRY_SERVER}/${REPOSITORY_NAME}"
+          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE_FULL" >> $GITHUB_OUTPUT
 
-          echo "VM: $VM_IP"
-          echo "IMAGE: $IMAGE"
+      - name: Trigger Remote Deployment (VM CD)
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.ctx.outputs.vm_ip }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.VM_SSH_KEY }}
+          envs: CLOUD_PROVIDER,REGISTRY_SERVER,IMAGE
+          script: |
+            set -e
+
+            export CLOUD_PROVIDER="${{ github.event.inputs.cloud }}"
+            export REGISTRY_URL=$(echo "${{ steps.ctx.outputs.image }}" | cut -d'/' -f1)
+            export IMAGE_NAME=$(echo "${{ steps.ctx.outputs.image }}" | cut -d'/' -f2)
+            export IMAGE_TAG="latest"
+            export CONTAINER_NAME="myapp"
+
+            echo "REGISTRY_URL=$REGISTRY_URL"
+            echo "IMAGE_NAME=$IMAGE_NAME"
+
+            chmod +x ~/app/contracts/runtime/deploy.sh
+
+            ~/app/contracts/runtime/deploy.sh
