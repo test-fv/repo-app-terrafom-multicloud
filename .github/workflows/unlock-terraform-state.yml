@@ -3,8 +3,21 @@ name: Terraform State Unlock (Emergency)
 on:
   workflow_dispatch:
     inputs:
+      cloud:
+        required: true
+        type: choice
+        options:
+          - aws
+          - azure
+
+      environment:
+        required: true
+        type: choice
+        options:
+          - dev
+          - prod
+
       lock_id:
-        description: "Terraform Lock ID (from error logs)"
         required: true
         type: string
 
@@ -16,19 +29,32 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # =========================
+      # AWS CREDENTIALS (CRÍTICO)
+      # =========================
+      - name: Configure AWS Credentials
+        if: inputs.cloud == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
 
+      # =========================
+      # INIT (YA CON AWS OK)
+      # =========================
       - name: Terraform Init
-        working-directory: terraform/environments/aws/prod
+        working-directory: terraform/environments/${{ inputs.cloud }}/${{ inputs.environment }}
         run: terraform init -reconfigure -input=false
 
-      - name: Show Lock Info
-        run: |
-          echo "🔓 Attempting to unlock Terraform state"
-          echo "Lock ID: ${{ inputs.lock_id }}"
-
+      # =========================
+      # UNLOCK
+      # =========================
       - name: Force Unlock State
-        working-directory: terraform/environments/aws/prod
+        working-directory: terraform/environments/${{ inputs.cloud }}/${{ inputs.environment }}
         run: |
+          echo "Unlocking state..."
           terraform force-unlock -force "${{ inputs.lock_id }}"
