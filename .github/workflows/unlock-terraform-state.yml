@@ -1,0 +1,34 @@
+name: Terraform State Unlock (Emergency)
+
+on:
+  workflow_dispatch:
+    inputs:
+      lock_id:
+        description: "Terraform Lock ID (from error logs)"
+        required: true
+        type: string
+
+jobs:
+  unlock:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: terraform/environments/aws/prod
+        run: terraform init -reconfigure -input=false
+
+      - name: Show Lock Info
+        run: |
+          echo "🔓 Attempting to unlock Terraform state"
+          echo "Lock ID: ${{ inputs.lock_id }}"
+
+      - name: Force Unlock State
+        working-directory: terraform/environments/aws/prod
+        run: |
+          terraform force-unlock -force "${{ inputs.lock_id }}"
