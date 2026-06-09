@@ -26,3 +26,12 @@ output "registry_password" {
   value     = module.platform.registry_password
   sensitive = true
 }
+
+output "ssh_user" {
+  value = module.platform.ssh_user
+}
+
+output "ssh_private_key" {
+  value     = module.platform.ssh_private_key
+  sensitive = true
+}
