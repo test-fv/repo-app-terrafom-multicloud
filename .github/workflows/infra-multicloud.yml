@@ -78,5 +78,3 @@ jobs:
           terraform apply \
             -auto-approve \
             -input=false \
-            -var="instance_type=t3.micro" \
-            -var="repository_name=myapp"

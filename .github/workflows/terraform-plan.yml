@@ -19,11 +19,6 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    env:
-      TF_VAR_instance_type: ${{ vars.TF_VAR_INSTANCE_TYPE }}
-      TF_VAR_repository_name: ${{ vars.TF_VAR_REPOSITORY_NAME }}
-      TF_VAR_aws_region: ${{ vars.TF_VAR_AWS_REGION }}
-
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
@@ -64,5 +59,3 @@ jobs:
           terraform plan \
             -input=false \
             -no-color \
-            -var="instance_type=t3.micro" \
-            -var="repository_name=myapp"

@@ -1,3 +1,1 @@
-variable "instance_type" {}
-
-variable "repository_name" {}
+# No variables required for prod
