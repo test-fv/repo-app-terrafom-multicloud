@@ -19,7 +19,11 @@ on:
           - dev
           - prod
 
-# 🔥 EVITA EJECUCIONES PARALELAS (CLAVE PARA TU ERROR DE LOCK)
+      force_unlock:
+        required: false
+        type: boolean
+        default: false
+
 concurrency:
   group: terraform-${{ github.event.inputs.cloud }}-${{ github.event.inputs.environment }}
   cancel-in-progress: false
@@ -38,16 +42,46 @@ jobs:
 
     secrets: inherit
 
+
   apply:
 
     needs: plan
 
-    uses: ./.github/workflows/terraform-apply.yml
+    runs-on: ubuntu-latest
 
-    with:
+    steps:
 
-      cloud-provider: ${{ github.event.inputs.cloud }}
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
+      - name: Configure AWS Credentials
+        if: github.event.inputs.cloud == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-    secrets: inherit
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
+        run: terraform init -reconfigure -input=false
+
+      # ======================================
+      # 🔥 AUTO UNLOCK (SOLO SI LO ACTIVAS)
+      # ======================================
+      - name: Force Unlock State (optional)
+        if: ${{ github.event.inputs.force_unlock == 'true' }}
+        working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
+        run: |
+          echo "⚠️ Forcing unlock (manual trigger)"
+          terraform force-unlock -force cfe8ea1c-f38b-800a-c34f-757040819a56 || true
+
+      # ======================================
+      # APPLY REAL
+      # ======================================
+      - name: Terraform Apply
+        working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
+        run: terraform apply -auto-approve
