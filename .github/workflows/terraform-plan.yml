@@ -20,15 +20,9 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-
       TF_VAR_instance_type: ${{ vars.TF_VAR_INSTANCE_TYPE }}
-
       TF_VAR_repository_name: ${{ vars.TF_VAR_REPOSITORY_NAME }}
-
       TF_VAR_aws_region: ${{ vars.TF_VAR_AWS_REGION }}
-
-      TF_VAR_ssh_public_key: ${{ secrets.TF_VAR_SSH_PUBLIC_KEY }}      
-
 
     defaults:
       run:
@@ -38,6 +32,28 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Workflow Version
+        run: |
+          echo "############################################"
+          echo "TERRAFORM PLAN WORKFLOW VERSION 2026-06-09"
+          echo "############################################"
+
+      - name: Debug Working Directory
+        run: |
+          echo "===== PWD ====="
+          pwd
+
+          echo "===== FILES ====="
+          ls -la
+
+      - name: Debug TF Vars
+        run: |
+          echo "=================================="
+          echo "TF_VAR_instance_type=[$TF_VAR_instance_type]"
+          echo "TF_VAR_repository_name=[$TF_VAR_repository_name]"
+          echo "TF_VAR_aws_region=[$TF_VAR_aws_region]"
+          echo "=================================="
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
