@@ -7,7 +7,7 @@ module "platform" {
 
   repository_name = var.repository_name
 
-  aws_region = var.aws_region
+  aws_region = local.aws_region
 
   ssh_public_key = var.ssh_public_key
 
