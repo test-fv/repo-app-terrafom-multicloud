@@ -9,7 +9,5 @@ module "platform" {
 
   aws_region = local.aws_region
 
-  ssh_public_key = var.ssh_public_key
-
   tags = local.common_tags
 }

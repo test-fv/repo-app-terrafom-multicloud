@@ -8,6 +8,10 @@ resource "azurerm_public_ip" "ip" {
 
   tags = var.tags
 }
+resource "tls_private_key" "ssh" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
 
 resource "azurerm_network_interface" "nic" {
   name                = "${var.name_prefix}-nic"
@@ -44,7 +48,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 
   admin_ssh_key {
     username   = var.admin_username
-    public_key = var.ssh_public_key
+    public_key = tls_private_key.ssh.public_key_openssh
   }
 
   os_disk {

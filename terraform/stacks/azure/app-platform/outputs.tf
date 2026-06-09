@@ -18,3 +18,8 @@ output "registry_password" {
 output "ssh_user" {
   value = "azureuser"
 }
+
+output "ssh_private_key" {
+  value     = module.compute.ssh_private_key
+  sensitive = true
+}

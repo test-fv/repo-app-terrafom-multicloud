@@ -33,7 +33,5 @@ module "compute" {
 
   aws_region = var.aws_region
 
-  ssh_public_key = var.ssh_public_key
-
   tags = var.tags
 }

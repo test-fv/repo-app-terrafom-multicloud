@@ -12,6 +12,4 @@ variable "registry_url" {}
 
 variable "aws_region" {}
 
-variable "ssh_public_key" {}
-
 variable "tags" {}
