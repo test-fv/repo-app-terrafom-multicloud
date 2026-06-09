@@ -8,57 +8,84 @@ on:
         type: choice
         options:
           - aws
+          - azure
+
+concurrency:
+  group: app-${{ github.event.inputs.cloud }}
+  cancel-in-progress: false
 
 jobs:
 
-  outputs:
+  terraform:
     uses: ./.github/workflows/read-outputs.yml
     with:
-      cloud-provider: aws
-      working-directory: terraform/environments/aws/prod
+      cloud-provider: ${{ github.event.inputs.cloud }}
+      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
     secrets: inherit
 
-
-  debug:
-    needs: outputs
+  build:
+    needs: terraform
     runs-on: ubuntu-latest
 
     steps:
+      - name: Download Terraform Outputs Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs-${{ github.event.inputs.cloud }}
 
-      - name: Debug outputs (human readable)
+      - name: Parse Terraform Outputs
+        id: tf
+        shell: bash
         run: |
-          echo "VM_IP=${{ needs.outputs.vm_ip }}"
-          echo "REGISTRY_SERVER=${{ needs.outputs.registry_server }}"
-          echo "REPOSITORY=${{ needs.outputs.repository_name }}"
+          set -euo pipefail
 
-      - name: HARD CHECK OUTPUTS
+          VM_IP=$(jq -r '.vm_ip.value' outputs.json)
+          REGISTRY_SERVER=$(jq -r '.registry_server.value' outputs.json)
+          REPOSITORY_NAME=$(jq -r '.repository_name.value' outputs.json)
+          REGISTRY_USERNAME=$(jq -r '.registry_username.value' outputs.json)
+          REGISTRY_PASSWORD=$(jq -r '.registry_password.value' outputs.json)
+
+          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
+          echo "registry_server=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
+          echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
+          echo "registry_username=$REGISTRY_USERNAME" >> $GITHUB_OUTPUT
+          echo "registry_password=$REGISTRY_PASSWORD" >> $GITHUB_OUTPUT
+
+      - name: Debug Outputs
         run: |
-          echo "RAW NEEDS OUTPUTS:"
-          echo "${{ toJSON(needs.outputs) }}"
+          echo "VM_IP=${{ steps.tf.outputs.vm_ip }}"
+          echo "REGISTRY=${{ steps.tf.outputs.registry_server }}"
 
+      - name: Build Docker Image
+        run: |
+          IMAGE="${{ steps.tf.outputs.registry_server }}/${{ steps.tf.outputs.repository_name }}"
 
-  build:
-    needs: outputs
-    uses: ./.github/workflows/app-build.yml
+          docker build -t $IMAGE:latest ./app
 
-    with:
-      cloud-provider: aws
-      registry-server: ${{ needs.outputs.registry_server }}
-      repository-name: ${{ needs.outputs.repository_name }}
+      - name: Login to Registry
+        run: |
+          echo "${{ steps.tf.outputs.registry_password }}" | docker login \
+            --username "${{ steps.tf.outputs.registry_username }}" \
+            --password-stdin \
+            "${{ steps.tf.outputs.registry_server }}"
 
-    secrets: inherit
+      - name: Push Image
+        run: |
+          IMAGE="${{ steps.tf.outputs.registry_server }}/${{ steps.tf.outputs.repository_name }}"
+          docker push $IMAGE:latest
 
 
   deploy:
-    needs: [outputs, build]
-    uses: ./.github/workflows/app-deploy.yml
+    needs: [terraform, build]
+    runs-on: ubuntu-latest
 
-    with:
-      cloud-provider: aws
-      vm-ip: ${{ needs.outputs.vm_ip }}
-      ssh-user: ${{ needs.outputs.ssh_user }}
-      registry-url: ${{ needs.outputs.registry_server }}/${{ needs.outputs.repository_name }}
-      registry-username: ${{ needs.outputs.registry_username }}
-      registry-password: ${{ needs.outputs.registry_password }}
+    steps:
+      - name: Download Terraform Outputs Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs-${{ github.event.inputs.cloud }}
 
-    secrets: inherit
+      - name: Show Deployment Context
+        run: |
+          echo "VM: $(jq -r '.vm_ip.value' outputs.json)"
+          echo "REGISTRY: $(jq -r '.registry_server.value' outputs.json)"
