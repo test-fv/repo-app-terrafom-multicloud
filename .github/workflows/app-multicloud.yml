@@ -23,15 +23,26 @@ jobs:
       working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
     secrets: inherit
 
+
   build:
     needs: terraform
     runs-on: ubuntu-latest
 
     steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Download Terraform Outputs Artifact
         uses: actions/download-artifact@v4
         with:
           name: tf-outputs-${{ github.event.inputs.cloud }}
+
+      - name: Validate Terraform Outputs File
+        run: |
+          echo "=== OUTPUT FILE ==="
+          ls -la
+          cat outputs.json
 
       - name: Parse Terraform Outputs
         id: tf
@@ -39,47 +50,67 @@ jobs:
         run: |
           set -euo pipefail
 
-          VM_IP=$(jq -r '.vm_ip.value' outputs.json)
           REGISTRY_SERVER=$(jq -r '.registry_server.value' outputs.json)
           REPOSITORY_NAME=$(jq -r '.repository_name.value' outputs.json)
           REGISTRY_USERNAME=$(jq -r '.registry_username.value' outputs.json)
           REGISTRY_PASSWORD=$(jq -r '.registry_password.value' outputs.json)
+          VM_IP=$(jq -r '.vm_ip.value' outputs.json)
+
+          # VALIDACIÓN REAL (NO SILENCIOSA)
+          if [ -z "$REGISTRY_SERVER" ]; then
+            echo "❌ registry_server vacío desde Terraform"
+            exit 1
+          fi
+
+          IMAGE="${REGISTRY_SERVER}/${REPOSITORY_NAME}"
 
           echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
           echo "registry_server=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
           echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
           echo "registry_username=$REGISTRY_USERNAME" >> $GITHUB_OUTPUT
           echo "registry_password=$REGISTRY_PASSWORD" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
 
-      - name: Debug Outputs
+      - name: Debug Final Values
         run: |
-          echo "VM_IP=${{ steps.tf.outputs.vm_ip }}"
-          echo "REGISTRY=${{ steps.tf.outputs.registry_server }}"
+          echo "VM: ${{ steps.tf.outputs.vm_ip }}"
+          echo "IMAGE: ${{ steps.tf.outputs.image }}"
+          echo "REGISTRY: ${{ steps.tf.outputs.registry_server }}"
+
+      - name: Validate Docker Context
+        run: |
+          echo "Validating project structure..."
+          ls -la
+
+          if [ ! -d "app" ]; then
+            echo "❌ Folder ./app not found"
+            exit 1
+          fi
+
+          ls -la app
 
       - name: Build Docker Image
         run: |
-          IMAGE="${{ steps.tf.outputs.registry_server }}/${{ steps.tf.outputs.repository_name }}"
+          docker build -t ${{ steps.tf.outputs.image }}:latest ./app
 
-          docker build -t $IMAGE:latest ./app
-
-      - name: Login to Registry
+      - name: Login to Registry (AWS/Azure)
         run: |
           echo "${{ steps.tf.outputs.registry_password }}" | docker login \
             --username "${{ steps.tf.outputs.registry_username }}" \
             --password-stdin \
             "${{ steps.tf.outputs.registry_server }}"
 
-      - name: Push Image
+      - name: Push Docker Image
         run: |
-          IMAGE="${{ steps.tf.outputs.registry_server }}/${{ steps.tf.outputs.repository_name }}"
-          docker push $IMAGE:latest
+          docker push ${{ steps.tf.outputs.image }}:latest
 
 
   deploy:
-    needs: [terraform, build]
+    needs: build
     runs-on: ubuntu-latest
 
     steps:
+
       - name: Download Terraform Outputs Artifact
         uses: actions/download-artifact@v4
         with:
@@ -87,5 +118,14 @@ jobs:
 
       - name: Show Deployment Context
         run: |
-          echo "VM: $(jq -r '.vm_ip.value' outputs.json)"
-          echo "REGISTRY: $(jq -r '.registry_server.value' outputs.json)"
+          echo "=== DEPLOY INFO ==="
+          cat outputs.json
+
+          VM_IP=$(jq -r '.vm_ip.value' outputs.json)
+          REGISTRY_SERVER=$(jq -r '.registry_server.value' outputs.json)
+          REPOSITORY_NAME=$(jq -r '.repository_name.value' outputs.json)
+
+          IMAGE="${REGISTRY_SERVER}/${REPOSITORY_NAME}"
+
+          echo "VM: $VM_IP"
+          echo "IMAGE: $IMAGE"
