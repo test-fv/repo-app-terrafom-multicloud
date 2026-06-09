@@ -28,6 +28,6 @@ output "ssh_user" {
 }
 
 output "ssh_private_key" {
-  value     = module.platform.module.compute.ssh_private_key
+  value     = module.compute.ssh_private_key
   sensitive = true
 }
