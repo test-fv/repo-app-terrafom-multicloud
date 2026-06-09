@@ -1,14 +1,11 @@
-name: Reusable Terraform Apply
+name: Terraform Apply
 
 on:
   workflow_call:
-
     inputs:
-
       cloud-provider:
         required: true
         type: string
-
       working-directory:
         required: true
         type: string
@@ -16,18 +13,7 @@ on:
 jobs:
 
   apply:
-
     runs-on: ubuntu-latest
-    
-    env:
-
-      TF_VAR_instance_type: ${{ vars.TF_VAR_instance_type }}
-
-      TF_VAR_repository_name: ${{ vars.TF_VAR_repository_name }}
-
-      TF_VAR_aws_region: ${{ vars.TF_VAR_aws_region }}
-
-      TF_VAR_ssh_public_key: ${{ secrets.TF_VAR_ssh_public_key }}
 
     defaults:
       run:
@@ -38,15 +24,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Azure Login
-        if: inputs.cloud-provider == 'azure'
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
+      # =========================
+      # CONFIGURE AWS (SI APLICA)
+      # =========================
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
@@ -55,8 +35,38 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      # =========================
+      # TERRAFORM SETUP
+      # =========================
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
       - name: Terraform Init
         run: terraform init -reconfigure -input=false
 
+      # =========================
+      # 🔥 DEBUG REAL (STATE INSPECTION)
+      # =========================
+      - name: DEBUG STATE LIST
+        run: terraform state list || true
+
+      - name: DEBUG TLS PRIVATE KEY CHECK
+        run: terraform state list | grep tls_private_key || true
+
+      - name: DEBUG TERRAFORM OUTPUT RAW
+        run: |
+          echo "=============================="
+          echo "TERRAFORM OUTPUT (RAW)"
+          echo "=============================="
+          terraform output || true
+
+          echo "=============================="
+          echo "TERRAFORM OUTPUT (JSON)"
+          echo "=============================="
+          terraform output -json || true
+
+      # =========================
+      # APPLY
+      # =========================
       - name: Terraform Apply
-        run: terraform apply -auto-approve -input=false
+        run: terraform apply -auto-approve
