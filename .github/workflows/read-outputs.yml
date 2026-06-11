@@ -125,7 +125,15 @@ jobs:
           chmod 600 private.pem
 
           echo "=================================="
-          echo "SSH PRIVATE KEY FINGERPRINT"
+          echo "SSH PRIVATE KEY FINGERPRINT (MD5)"
+          echo "=================================="
+
+          ssh-keygen -E md5 -lf private.pem
+
+          echo ""
+
+          echo "=================================="
+          echo "SSH PRIVATE KEY FINGERPRINT (SHA256)"
           echo "=================================="
 
           ssh-keygen -lf private.pem
