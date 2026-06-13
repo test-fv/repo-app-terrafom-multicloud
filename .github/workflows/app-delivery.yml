@@ -72,9 +72,9 @@ jobs:
           aws ecr get-login-password \
           --region ${{ secrets.AWS_REGION }} \
           | docker login \
-          --username AWS \
-          --password-stdin \
-          ${{ steps.tf.outputs.registry_server }}
+            --username AWS \
+            --password-stdin \
+            ${{ steps.tf.outputs.registry_server }}
 
       - name: Push Image
         run: |
@@ -111,19 +111,40 @@ jobs:
           echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
 
           echo "ssh_private_key<<EOF" >> $GITHUB_OUTPUT
-          echo "$SSH_PRIVATE_KEY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "$SSH_PRIVATE_KEY"
+          echo "EOF"
+          >> $GITHUB_OUTPUT
 
-      - name: Upload deploy script to VM
+      - name: Prepare VM directories
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.ctx.outputs.vm_ip }}
+          username: ubuntu
+          key: ${{ steps.ctx.outputs.ssh_private_key }}
+          script: |
+            mkdir -p /home/ubuntu/app/contracts/runtime
+            mkdir -p /home/ubuntu/app/scripts/runtime/providers
+
+      - name: Upload contract deploy script
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ steps.ctx.outputs.vm_ip }}
           username: ubuntu
           key: ${{ steps.ctx.outputs.ssh_private_key }}
-          source: ".github/scripts/deploy/aws.sh"
-          target: "/home/ubuntu"
+          source: "contracts/runtime/deploy.sh"
+          target: "/home/ubuntu/app"
 
-      - name: Execute remote deploy
+      - name: Upload AWS provider runtime
+        if: github.event.inputs.cloud == 'aws'
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.ctx.outputs.vm_ip }}
+          username: ubuntu
+          key: ${{ steps.ctx.outputs.ssh_private_key }}
+          source: "scripts/runtime/providers/aws.sh"
+          target: "/home/ubuntu/app"
+
+      - name: Execute Enterprise Deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ steps.ctx.outputs.vm_ip }}
@@ -131,12 +152,14 @@ jobs:
           key: ${{ steps.ctx.outputs.ssh_private_key }}
           script: |
 
-            chmod +x /home/ubuntu/aws.sh
+            chmod +x /home/ubuntu/app/contracts/runtime/deploy.sh
+            chmod +x /home/ubuntu/app/scripts/runtime/providers/aws.sh
 
+            export CLOUD_PROVIDER="${{ github.event.inputs.cloud }}"
             export REGISTRY_URL="${{ steps.ctx.outputs.registry_server }}"
             export IMAGE_NAME="${{ steps.ctx.outputs.repository_name }}"
             export IMAGE_TAG="latest"
             export CONTAINER_NAME="myapp"
             export AWS_REGION="${{ secrets.AWS_REGION }}"
 
-            /home/ubuntu/aws.sh
+            /home/ubuntu/app/contracts/runtime/deploy.sh
