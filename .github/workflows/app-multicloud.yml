@@ -23,13 +23,11 @@ jobs:
       working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
     secrets: inherit
 
-
   build:
     needs: terraform
     runs-on: ubuntu-latest
 
     steps:
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -43,13 +41,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           REGISTRY_SERVER=$(jq -r '.registry_server.value' outputs.json)
           REPOSITORY_NAME=$(jq -r '.repository_name.value' outputs.json)
           VM_IP=$(jq -r '.vm_ip.value' outputs.json)
-
           IMAGE="${REGISTRY_SERVER}/${REPOSITORY_NAME}"
-
           echo "registry_server=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
           echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
           echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
@@ -57,24 +52,13 @@ jobs:
 
       - name: Validate Workspace
         run: |
-          echo "=== PROJECT STRUCTURE ==="
           ls -la
-
-          if [ ! -d "app" ]; then
-            echo "❌ ERROR: ./app directory not found"
-            exit 1
-          fi
-
+          test -d app
           ls -la app
 
       - name: Build Docker Image
-        run: |
-          docker build -t ${{ steps.tf.outputs.image }}:latest ./app
+        run: docker build -t ${{ steps.tf.outputs.image }}:latest ./app
 
-
-      # =========================
-      # AWS LOGIN (ECR REAL)
-      # =========================
       - name: Configure AWS Credentials
         if: ${{ github.event.inputs.cloud == 'aws' }}
         uses: aws-actions/configure-aws-credentials@v4
@@ -86,31 +70,22 @@ jobs:
       - name: Login to AWS ECR
         if: ${{ github.event.inputs.cloud == 'aws' }}
         run: |
-          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} \
-          | docker login \
-            --username AWS \
-            --password-stdin \
-            ${{ steps.tf.outputs.registry_server }}
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | docker login --username AWS --password-stdin ${{ steps.tf.outputs.registry_server }}
 
-
-      # =========================
-      # AZURE (PLACEHOLDER LIMPIO)
-      # =========================
       - name: Login to Azure ACR
         if: ${{ github.event.inputs.cloud == 'azure' }}
-        run: |
-          echo "Azure login handled externally (Terraform/Managed Identity)"
+        run: echo "Azure login handled externally"
 
       - name: Push Docker Image
-        run: |
-          docker push ${{ steps.tf.outputs.image }}:latest
-
+        run: docker push ${{ steps.tf.outputs.image }}:latest
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
       - name: Download Terraform Outputs Artifact
         uses: actions/download-artifact@v4
@@ -122,42 +97,39 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           VM_IP=$(jq -r '.vm_ip.value' outputs.json)
           IMAGE_FULL=$(jq -r '.registry_server.value + "/" + .repository_name.value' outputs.json)
-
-          # 🔐 SSH KEY DESDE TERRAFORM
           SSH_PRIVATE_KEY=$(jq -r '.ssh_private_key.value' outputs.json)
-
           echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
           echo "image=$IMAGE_FULL" >> $GITHUB_OUTPUT
-
-          # IMPORTANT: multiline safe output
           echo "ssh_private_key<<EOF" >> $GITHUB_OUTPUT
           echo "$SSH_PRIVATE_KEY" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Trigger Remote Deployment (VM CD)
+      - name: Upload runtime contracts
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.ctx.outputs.vm_ip }}
+          username: ubuntu
+          key: ${{ steps.ctx.outputs.ssh_private_key }}
+          source: |
+            contracts/runtime/deploy.sh
+            scripts/runtime/providers/aws.sh
+          target: /home/ubuntu/app
+
+      - name: Execute Remote Deployment
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ steps.ctx.outputs.vm_ip }}
           username: ubuntu
           key: ${{ steps.ctx.outputs.ssh_private_key }}
-
-          envs: CLOUD_PROVIDER,REGISTRY_SERVER,IMAGE
-
           script: |
             set -e
-
+            chmod +x /home/ubuntu/app/contracts/runtime/deploy.sh
+            chmod +x /home/ubuntu/app/scripts/runtime/providers/aws.sh
             export CLOUD_PROVIDER="${{ github.event.inputs.cloud }}"
             export REGISTRY_URL=$(echo "${{ steps.ctx.outputs.image }}" | cut -d'/' -f1)
             export IMAGE_NAME=$(echo "${{ steps.ctx.outputs.image }}" | cut -d'/' -f2)
             export IMAGE_TAG="latest"
             export CONTAINER_NAME="myapp"
-
-            echo "REGISTRY_URL=$REGISTRY_URL"
-            echo "IMAGE_NAME=$IMAGE_NAME"
-
-            chmod +x ~/app/contracts/runtime/deploy.sh
-
-            ~/app/contracts/runtime/deploy.sh
+            /home/ubuntu/app/contracts/runtime/deploy.sh
