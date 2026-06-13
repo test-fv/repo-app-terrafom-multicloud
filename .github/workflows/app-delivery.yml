@@ -1,0 +1,142 @@
+name: Multi Cloud Application Delivery
+
+on:
+  workflow_dispatch:
+    inputs:
+      cloud:
+        required: true
+        type: choice
+        options:
+          - aws
+          - azure
+
+concurrency:
+  group: app-${{ github.event.inputs.cloud }}
+  cancel-in-progress: false
+
+jobs:
+
+  terraform:
+    uses: ./.github/workflows/read-outputs.yml
+    with:
+      cloud-provider: ${{ github.event.inputs.cloud }}
+      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/prod
+    secrets: inherit
+
+  build:
+
+    needs: terraform
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Download Terraform Outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs-${{ github.event.inputs.cloud }}
+
+      - name: Parse Outputs
+        id: tf
+        shell: bash
+        run: |
+
+          REGISTRY_SERVER=$(jq -r '.registry_server.value' outputs.json)
+          REPOSITORY_NAME=$(jq -r '.repository_name.value' outputs.json)
+
+          IMAGE="${REGISTRY_SERVER}/${REPOSITORY_NAME}"
+
+          echo "registry_server=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
+          echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Build Docker Image
+        run: |
+          docker build \
+            -t ${{ steps.tf.outputs.image }}:latest \
+            ./app
+
+      - name: Configure AWS Credentials
+        if: github.event.inputs.cloud == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login ECR
+        if: github.event.inputs.cloud == 'aws'
+        run: |
+          aws ecr get-login-password \
+          --region ${{ secrets.AWS_REGION }} \
+          | docker login \
+          --username AWS \
+          --password-stdin \
+          ${{ steps.tf.outputs.registry_server }}
+
+      - name: Push Image
+        run: |
+          docker push ${{ steps.tf.outputs.image }}:latest
+
+  deploy:
+
+    needs: build
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v4
+
+      - name: Download Terraform Outputs
+        uses: actions/download-artifact@v4
+        with:
+          name: tf-outputs-${{ github.event.inputs.cloud }}
+
+      - name: Parse Deployment Context
+        id: ctx
+        shell: bash
+        run: |
+
+          VM_IP=$(jq -r '.vm_ip.value' outputs.json)
+          SSH_PRIVATE_KEY=$(jq -r '.ssh_private_key.value' outputs.json)
+
+          REGISTRY_SERVER=$(jq -r '.registry_server.value' outputs.json)
+          REPOSITORY_NAME=$(jq -r '.repository_name.value' outputs.json)
+
+          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
+          echo "registry_server=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
+          echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
+
+          echo "ssh_private_key<<EOF" >> $GITHUB_OUTPUT
+          echo "$SSH_PRIVATE_KEY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Upload deploy script to VM
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ steps.ctx.outputs.vm_ip }}
+          username: ubuntu
+          key: ${{ steps.ctx.outputs.ssh_private_key }}
+          source: ".github/scripts/deploy/aws.sh"
+          target: "/home/ubuntu"
+
+      - name: Execute remote deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ steps.ctx.outputs.vm_ip }}
+          username: ubuntu
+          key: ${{ steps.ctx.outputs.ssh_private_key }}
+          script: |
+
+            chmod +x /home/ubuntu/aws.sh
+
+            export REGISTRY_URL="${{ steps.ctx.outputs.registry_server }}"
+            export IMAGE_NAME="${{ steps.ctx.outputs.repository_name }}"
+            export IMAGE_TAG="latest"
+            export CONTAINER_NAME="myapp"
+            export AWS_REGION="${{ secrets.AWS_REGION }}"
+
+            /home/ubuntu/aws.sh
