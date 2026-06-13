@@ -179,5 +179,6 @@ jobs:
             export IMAGE_NAME=$(echo "${{ steps.ctx.outputs.image }}" | cut -d'/' -f2)
             export IMAGE_TAG="latest"
             export CONTAINER_NAME="myapp"
+            export AWS_REGION="${{ secrets.AWS_REGION }}"
 
             /home/ubuntu/app/contracts/runtime/deploy.sh
