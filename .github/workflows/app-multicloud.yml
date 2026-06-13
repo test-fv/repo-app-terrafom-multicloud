@@ -54,16 +54,6 @@ jobs:
           echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
 
-      - name: Validate Workspace
-        run: |
-          echo "===== WORKSPACE ====="
-          pwd
-          ls -la
-
-          echo ""
-          echo "===== APP ====="
-          ls -la app
-
       - name: Build Docker Image
         run: |
           docker build \
@@ -88,11 +78,6 @@ jobs:
             --password-stdin \
             ${{ steps.tf.outputs.registry_server }}
 
-      - name: Login to Azure ACR
-        if: ${{ github.event.inputs.cloud == 'azure' }}
-        run: |
-          echo "Azure login handled externally"
-
       - name: Push Docker Image
         run: |
           docker push ${{ steps.tf.outputs.image }}:latest
@@ -106,29 +91,6 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
-
-      - name: Verify runtime files
-        run: |
-          echo "===== CURRENT DIRECTORY ====="
-          pwd
-
-          echo ""
-          echo "===== ROOT ====="
-          ls -la
-
-          echo ""
-          echo "===== CONTRACTS ====="
-          ls -R contracts || true
-
-          echo ""
-          echo "===== SCRIPTS ====="
-          ls -R scripts || true
-
-          test -f contracts/runtime/deploy.sh
-          test -f scripts/runtime/providers/aws.sh
-
-          echo ""
-          echo "Runtime files found successfully."
 
       - name: Download Terraform Outputs Artifact
         uses: actions/download-artifact@v4
@@ -148,24 +110,17 @@ jobs:
           echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
           echo "image=$IMAGE_FULL" >> $GITHUB_OUTPUT
 
-          # 🔐 Crear llave sin exponerla en logs
-          echo "$SSH_PRIVATE_KEY" > ssh.pem
-          chmod 600 ssh.pem
-
-          echo "ssh_key_path=ssh.pem" >> $GITHUB_OUTPUT
-
-      - name: Upload SSH Key Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: ssh-key
-          path: ssh.pem
+          # IMPORTANTE: pasar la llave directamente (SIN archivos intermedios)
+          echo "ssh_private_key<<EOF" >> $GITHUB_OUTPUT
+          echo "$SSH_PRIVATE_KEY" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Upload runtime contracts
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ steps.ctx.outputs.vm_ip }}
           username: ubuntu
-          key: ${{ steps.ctx.outputs.ssh_key_path }}
+          key: ${{ steps.ctx.outputs.ssh_private_key }}
           source: "contracts/runtime/deploy.sh,scripts/runtime/providers/aws.sh"
           target: "/home/ubuntu/app"
           overwrite: true
@@ -175,7 +130,7 @@ jobs:
         with:
           host: ${{ steps.ctx.outputs.vm_ip }}
           username: ubuntu
-          key: ${{ steps.ctx.outputs.ssh_key_path }}
+          key: ${{ steps.ctx.outputs.ssh_private_key }}
 
           script: |
             set -e
