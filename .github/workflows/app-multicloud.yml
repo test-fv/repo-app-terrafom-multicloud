@@ -97,6 +97,7 @@ jobs:
         run: |
           docker push ${{ steps.tf.outputs.image }}:latest
 
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -147,16 +148,24 @@ jobs:
           echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
           echo "image=$IMAGE_FULL" >> $GITHUB_OUTPUT
 
-          echo "ssh_private_key<<EOF" >> $GITHUB_OUTPUT
-          echo "$SSH_PRIVATE_KEY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          # 🔐 Crear llave sin exponerla en logs
+          echo "$SSH_PRIVATE_KEY" > ssh.pem
+          chmod 600 ssh.pem
+
+          echo "ssh_key_path=ssh.pem" >> $GITHUB_OUTPUT
+
+      - name: Upload SSH Key Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssh-key
+          path: ssh.pem
 
       - name: Upload runtime contracts
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ steps.ctx.outputs.vm_ip }}
           username: ubuntu
-          key: ${{ steps.ctx.outputs.ssh_private_key }}
+          key: ${{ steps.ctx.outputs.ssh_key_path }}
           source: "contracts/runtime/deploy.sh,scripts/runtime/providers/aws.sh"
           target: "/home/ubuntu/app"
           overwrite: true
@@ -166,7 +175,7 @@ jobs:
         with:
           host: ${{ steps.ctx.outputs.vm_ip }}
           username: ubuntu
-          key: ${{ steps.ctx.outputs.ssh_private_key }}
+          key: ${{ steps.ctx.outputs.ssh_key_path }}
 
           script: |
             set -e
