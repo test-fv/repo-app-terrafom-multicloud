@@ -3,6 +3,10 @@ set -e
 
 echo "AWS runtime authentication..."
 
-aws ecr get-login-password --region $AWS_REGION | docker login \
+: "${AWS_REGION:?AWS_REGION is required but not set}"
+
+: "${REGISTRY_URL:?REGISTRY_URL is required but not set}"
+
+aws ecr get-login-password --region "$AWS_REGION" | docker login \
   --username AWS \
-  --password-stdin $REGISTRY_URL
+  --password-stdin "$REGISTRY_URL"
