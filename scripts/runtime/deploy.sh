@@ -1,43 +1,154 @@
 #!/bin/bash
-set -e
 
-echo "==================================="
-echo "Enterprise Multi-Cloud Deployment"
-echo "==================================="
+set -euo pipefail
 
-required_vars=(
-  CLOUD_PROVIDER
-  REGISTRY_URL
-  IMAGE_NAME
-  IMAGE_TAG
-)
+#########################################
+# Constants
+#########################################
 
-for var in "${required_vars[@]}"; do
-  if [ -z "${!var}" ]; then
-    echo "ERROR: Missing variable $var"
+APP_HOME="${APP_HOME:-/home/ubuntu/app}"
+
+#########################################
+# Logging
+#########################################
+
+log() {
+  echo "[DEPLOY] $*"
+}
+
+#########################################
+# Validate environment
+#########################################
+
+validate_environment() {
+
+  local required_vars=(
+    CLOUD_PROVIDER
+    REGISTRY_URL
+    IMAGE_NAME
+    IMAGE_TAG
+    CONTAINER_NAME
+  )
+
+  for var in "${required_vars[@]}"; do
+
+    if [[ -z "${!var:-}" ]]; then
+      echo "ERROR: Environment variable '${var}' is required."
+      exit 1
+    fi
+
+  done
+
+}
+
+#########################################
+# Load provider runtime
+#########################################
+
+load_provider() {
+
+  PROVIDER_SCRIPT="${APP_HOME}/scripts/runtime/providers/${CLOUD_PROVIDER}.sh"
+
+  if [[ ! -f "${PROVIDER_SCRIPT}" ]]; then
+
+    echo "ERROR: Provider runtime not found:"
+    echo "       ${PROVIDER_SCRIPT}"
     exit 1
+
   fi
-done
 
-echo "Loading provider runtime..."
+  log "Loading provider runtime..."
 
-source ~/app/scripts/runtime/providers/${CLOUD_PROVIDER}.sh
+  source "${PROVIDER_SCRIPT}"
 
-echo "Pulling image..."
+}
 
-docker pull ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}
+#########################################
+# Cleanup docker cache
+#########################################
 
-echo "Stopping old container..."
+cleanup_images() {
 
-docker stop myapp || true
-docker rm myapp || true
+  log "Cleaning Docker cache..."
 
-echo "Starting container..."
+  docker image prune -af || true
 
-docker run -d \
-  --name myapp \
-  --restart unless-stopped \
-  -p 80:8080 \
-  ${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}
+}
 
-echo "Deployment completed"
+#########################################
+# Pull latest image
+#########################################
+
+pull_image() {
+
+  FULL_IMAGE="${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
+
+  log "Pulling image: ${FULL_IMAGE}"
+
+  docker pull "${FULL_IMAGE}"
+
+}
+
+#########################################
+# Replace container
+#########################################
+
+replace_container() {
+
+  log "Stopping previous container..."
+
+  docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+
+  docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+
+  log "Starting new container..."
+
+  docker run \
+    -d \
+    --name "${CONTAINER_NAME}" \
+    --restart unless-stopped \
+    -p 80:8080 \
+    "${FULL_IMAGE}"
+
+}
+
+#########################################
+# Finish
+#########################################
+
+finish() {
+
+  echo ""
+  echo "==================================="
+  echo "Deployment completed successfully"
+  echo "Container : ${CONTAINER_NAME}"
+  echo "Image     : ${FULL_IMAGE}"
+  echo "==================================="
+
+}
+
+#########################################
+# Main
+#########################################
+
+main() {
+
+  echo "==================================="
+  echo "Enterprise Multi-Cloud Deployment"
+  echo "==================================="
+
+  validate_environment
+
+  load_provider
+
+  cleanup_images
+
+  pull_image
+
+  replace_container
+
+  finish
+
+}
+
+main "$@"

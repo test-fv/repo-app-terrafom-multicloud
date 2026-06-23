@@ -49,41 +49,41 @@ jobs:
 
           IMAGE="${REGISTRY_SERVER}/${REPOSITORY_NAME}"
 
-          echo "registry_server=$REGISTRY_SERVER" >> $GITHUB_OUTPUT
-          echo "repository_name=$REPOSITORY_NAME" >> $GITHUB_OUTPUT
-          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
-          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+          echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
+          echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
+          echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
 
       - name: Build Docker Image
         run: |
           docker build \
-            -t ${{ steps.tf.outputs.image }}:latest \
+            -t "${{ steps.tf.outputs.image }}:latest" \
             ./app
 
       - name: Configure AWS Credentials
-        if: ${{ github.event.inputs.cloud == 'aws' }}
+        if: github.event.inputs.cloud == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to AWS ECR
-        if: ${{ github.event.inputs.cloud == 'aws' }}
+      - name: Login AWS ECR
+        if: github.event.inputs.cloud == 'aws'
         run: |
           aws ecr get-login-password \
-          --region ${{ secrets.AWS_REGION }} \
-          | docker login \
-            --username AWS \
-            --password-stdin \
-            ${{ steps.tf.outputs.registry_server }}
+            --region "${{ secrets.AWS_REGION }}" \
+            | docker login \
+              --username AWS \
+              --password-stdin \
+              "${{ steps.tf.outputs.registry_server }}"
 
       - name: Push Docker Image
         run: |
-          docker push ${{ steps.tf.outputs.image }}:latest
-
+          docker push "${{ steps.tf.outputs.image }}:latest"
 
   deploy:
+
     needs: build
     runs-on: ubuntu-latest
 
@@ -107,21 +107,20 @@ jobs:
           IMAGE_FULL=$(jq -r '.registry_server.value + "/" + .repository_name.value' outputs.json)
           SSH_PRIVATE_KEY=$(jq -r '.ssh_private_key.value' outputs.json)
 
-          echo "vm_ip=$VM_IP" >> $GITHUB_OUTPUT
-          echo "image=$IMAGE_FULL" >> $GITHUB_OUTPUT
+          echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
+          echo "image=$IMAGE_FULL" >> "$GITHUB_OUTPUT"
 
-          # IMPORTANTE: pasar la llave directamente (SIN archivos intermedios)
-          echo "ssh_private_key<<EOF" >> $GITHUB_OUTPUT
-          echo "$SSH_PRIVATE_KEY" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "ssh_private_key<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$SSH_PRIVATE_KEY" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
 
-      - name: Upload runtime contracts
+      - name: Upload Runtime
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ steps.ctx.outputs.vm_ip }}
           username: ubuntu
           key: ${{ steps.ctx.outputs.ssh_private_key }}
-          source: "contracts/runtime/deploy.sh,scripts/runtime/providers/aws.sh"
+          source: "contracts/runtime,scripts/runtime"
           target: "/home/ubuntu/app"
           overwrite: true
 
@@ -136,7 +135,7 @@ jobs:
             set -e
 
             chmod +x /home/ubuntu/app/contracts/runtime/deploy.sh
-            chmod +x /home/ubuntu/app/scripts/runtime/providers/aws.sh
+            chmod +x /home/ubuntu/app/scripts/runtime/providers/*.sh
 
             export CLOUD_PROVIDER="${{ github.event.inputs.cloud }}"
             export REGISTRY_URL=$(echo "${{ steps.ctx.outputs.image }}" | cut -d'/' -f1)

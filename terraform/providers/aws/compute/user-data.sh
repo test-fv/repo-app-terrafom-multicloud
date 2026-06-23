@@ -1,7 +1,16 @@
 #!/bin/bash
-set -e
 
-apt-get update
+set -euo pipefail
+
+readonly APP_HOME="/home/ubuntu/app"
+
+echo "==================================="
+echo "Provisioning AWS Runtime"
+echo "==================================="
+
+export DEBIAN_FRONTEND=noninteractive
+
+apt-get update -y
 
 apt-get install -y \
   docker.io \
@@ -13,8 +22,16 @@ apt-get install -y \
 systemctl enable docker
 systemctl start docker
 
-usermod -aG docker ubuntu
+if ! groups ubuntu | grep -q docker; then
+  usermod -aG docker ubuntu
+fi
 
-mkdir -p /home/ubuntu/app/scripts/runtime/providers
+mkdir -p "${APP_HOME}"
 
-chown -R ubuntu:ubuntu /home/ubuntu/app
+chown -R ubuntu:ubuntu "${APP_HOME}"
+
+apt-get clean
+
+echo "==================================="
+echo "Provisioning completed"
+echo "==================================="

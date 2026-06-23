@@ -1,6 +1,12 @@
 locals {
 
-  name_prefix = "portfolio-prod"
+  project_name = "portfolio"
+
+  environment = "prod"
+
+  platform = "aws"
+
+  name_prefix = "${local.project_name}-${local.environment}"
 
   aws_region = "us-east-1"
 
@@ -8,11 +14,20 @@ locals {
 
   repository_name = "myapp"
 
+  vpc_cidr = "10.0.0.0/16"
+
+  subnet_cidr = "10.0.1.0/24"
+
   common_tags = {
-    environment = "prod"
-    platform    = "aws"
-    managed_by  = "terraform"
-    project     = "portfolio"
+
+    environment = local.environment
+
+    platform = local.platform
+
+    managed_by = "terraform"
+
+    project = local.project_name
+
   }
 
 }
