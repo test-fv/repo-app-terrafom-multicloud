@@ -16,19 +16,6 @@ output "registry_url" {
   value = module.registry.registry_url
 }
 
-output "registry_username" {
-  description = "Registry username."
-
-  value = module.registry.registry_username
-}
-
-output "registry_password" {
-  description = "Registry password."
-
-  value      = module.registry.registry_password
-  sensitive  = true
-}
-
 output "ssh_user" {
   description = "SSH username."
 
