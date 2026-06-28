@@ -1,18 +1,29 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -euo pipefail
+set -Eeuo pipefail
 
-echo "AWS runtime authentication..."
+##########################################################
+# AWS Provider Runtime
+##########################################################
 
-: "${AWS_REGION:?AWS_REGION is required but not set}"
-: "${REGISTRY_URL:?REGISTRY_URL is required but not set}"
+provider_login() {
 
-echo "Authenticating against: ${REGISTRY_URL}"
+    echo ""
+    echo "========================================"
+    echo "AWS Provider Authentication"
+    echo "========================================"
 
-aws ecr get-login-password \
-  --region "${AWS_REGION}" \
-  | docker login \
-      --username AWS \
-      --password-stdin "${REGISTRY_URL}"
+    : "${AWS_REGION:?AWS_REGION environment variable is required}"
+    : "${REGISTRY_URL:?REGISTRY_URL environment variable is required}"
 
-echo "AWS authentication completed."
+    aws ecr get-login-password \
+        --region "${AWS_REGION}" \
+    | docker login \
+        --username AWS \
+        --password-stdin \
+        "${REGISTRY_URL}"
+
+    echo ""
+    echo "ECR authentication completed."
+
+}

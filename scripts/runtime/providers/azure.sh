@@ -1,18 +1,28 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -euo pipefail
+set -Eeuo pipefail
 
-echo "Azure runtime authentication..."
+##########################################################
+# Azure Provider Runtime
+##########################################################
 
-: "${REGISTRY_URL:?REGISTRY_URL is required but not set}"
-: "${REGISTRY_USERNAME:?REGISTRY_USERNAME is required but not set}"
-: "${REGISTRY_PASSWORD:?REGISTRY_PASSWORD is required but not set}"
+provider_login() {
 
-echo "Authenticating against: ${REGISTRY_URL}"
+    echo ""
+    echo "========================================"
+    echo "Azure Provider Authentication"
+    echo "========================================"
 
-echo "${REGISTRY_PASSWORD}" | docker login \
-  "${REGISTRY_URL}" \
-  --username "${REGISTRY_USERNAME}" \
-  --password-stdin
+    : "${REGISTRY_URL:?REGISTRY_URL environment variable is required}"
+    : "${REGISTRY_USERNAME:?REGISTRY_USERNAME environment variable is required}"
+    : "${REGISTRY_PASSWORD:?REGISTRY_PASSWORD environment variable is required}"
 
-echo "Azure authentication completed."
+    echo "${REGISTRY_PASSWORD}" | docker login \
+        "${REGISTRY_URL}" \
+        --username "${REGISTRY_USERNAME}" \
+        --password-stdin
+
+    echo ""
+    echo "ACR authentication completed."
+
+}

@@ -16,17 +16,14 @@ on:
       vm_ip:
         value: ${{ jobs.terraform_outputs.outputs.vm_ip }}
 
+      instance_id:
+        value: ${{ jobs.terraform_outputs.outputs.instance_id }}
+
       registry_server:
         value: ${{ jobs.terraform_outputs.outputs.registry_server }}
 
       repository_name:
         value: ${{ jobs.terraform_outputs.outputs.repository_name }}
-
-      registry_username:
-        value: ${{ jobs.terraform_outputs.outputs.registry_username }}
-
-      registry_password:
-        value: ${{ jobs.terraform_outputs.outputs.registry_password }}
 
       ssh_user:
         value: ${{ jobs.terraform_outputs.outputs.ssh_user }}
@@ -42,10 +39,9 @@ jobs:
 
     outputs:
       vm_ip: ${{ steps.tf_outputs.outputs.vm_ip }}
+      instance_id: ${{ steps.tf_outputs.outputs.instance_id }}
       registry_server: ${{ steps.tf_outputs.outputs.registry_server }}
       repository_name: ${{ steps.tf_outputs.outputs.repository_name }}
-      registry_username: ${{ steps.tf_outputs.outputs.registry_username }}
-      registry_password: ${{ steps.tf_outputs.outputs.registry_password }}
       ssh_user: ${{ steps.tf_outputs.outputs.ssh_user }}
       ssh_private_key: ${{ steps.tf_outputs.outputs.ssh_private_key }}
 
@@ -85,18 +81,16 @@ jobs:
           terraform output
 
           VM_IP=$(terraform output -raw vm_ip)
+          INSTANCE_ID=$(terraform output -raw instance_id)
           REGISTRY_SERVER=$(terraform output -raw registry_server)
           REPOSITORY_NAME=$(terraform output -raw repository_name)
-          REGISTRY_USERNAME=$(terraform output -raw registry_username)
-          REGISTRY_PASSWORD=$(terraform output -raw registry_password)
           SSH_USER=$(terraform output -raw ssh_user)
           SSH_PRIVATE_KEY=$(terraform output -raw ssh_private_key)
 
           echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
+          echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
           echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
           echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
-          echo "registry_username=$REGISTRY_USERNAME" >> "$GITHUB_OUTPUT"
-          echo "registry_password=$REGISTRY_PASSWORD" >> "$GITHUB_OUTPUT"
           echo "ssh_user=$SSH_USER" >> "$GITHUB_OUTPUT"
 
           echo "ssh_private_key<<EOF" >> "$GITHUB_OUTPUT"
@@ -144,9 +138,9 @@ jobs:
           echo "STEP OUTPUTS"
           echo "======================================="
           echo "VM_IP=${{ steps.tf_outputs.outputs.vm_ip }}"
+          echo "INSTANCE_ID=${{ steps.tf_outputs.outputs.instance_id }}"
           echo "REGISTRY_SERVER=${{ steps.tf_outputs.outputs.registry_server }}"
           echo "REPOSITORY_NAME=${{ steps.tf_outputs.outputs.repository_name }}"
-          echo "REGISTRY_USERNAME=${{ steps.tf_outputs.outputs.registry_username }}"
           echo "SSH_USER=${{ steps.tf_outputs.outputs.ssh_user }}"
           echo "======================================="
 

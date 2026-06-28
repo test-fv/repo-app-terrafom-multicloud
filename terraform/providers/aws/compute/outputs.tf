@@ -13,13 +13,3 @@ output "instance_id" {
   value = aws_instance.vm.id
 
 }
-
-output "ssh_private_key" {
-
-  description = "Generated SSH private key used for instance access."
-
-  value = tls_private_key.ssh.private_key_pem
-
-  sensitive = true
-
-}

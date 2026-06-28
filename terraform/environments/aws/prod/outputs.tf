@@ -21,12 +21,3 @@ output "registry_server" {
 output "repository_name" {
   value = module.platform.repository_name
 }
-
-output "ssh_user" {
-  value = module.platform.ssh_user
-}
-
-output "ssh_private_key" {
-  value     = module.platform.ssh_private_key
-  sensitive = true
-}

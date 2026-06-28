@@ -1,154 +1,132 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-set -euo pipefail
-
-#########################################
-# Constants
-#########################################
-
-APP_HOME="${APP_HOME:-/home/ubuntu/app}"
+set -Eeuo pipefail
 
 #########################################
 # Logging
 #########################################
 
 log() {
-  echo "[DEPLOY] $*"
+    echo ""
+    echo "=================================================="
+    echo "[DEPLOY] $1"
+    echo "=================================================="
 }
 
 #########################################
-# Validate environment
+# Required variables
 #########################################
 
-validate_environment() {
-
-  local required_vars=(
+required_vars=(
     CLOUD_PROVIDER
     REGISTRY_URL
     IMAGE_NAME
     IMAGE_TAG
     CONTAINER_NAME
-  )
+)
 
-  for var in "${required_vars[@]}"; do
+for var in "${required_vars[@]}"; do
 
     if [[ -z "${!var:-}" ]]; then
-      echo "ERROR: Environment variable '${var}' is required."
-      exit 1
+        echo "ERROR -> Missing environment variable: ${var}"
+        exit 1
     fi
 
-  done
-
-}
+done
 
 #########################################
-# Load provider runtime
+# Runtime location
 #########################################
 
-load_provider() {
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-  PROVIDER_SCRIPT="${APP_HOME}/scripts/runtime/providers/${CLOUD_PROVIDER}.sh"
+PROJECT_ROOT="$( cd "${SCRIPT_DIR}/../.." && pwd )"
 
-  if [[ ! -f "${PROVIDER_SCRIPT}" ]]; then
+PROVIDER_SCRIPT="${PROJECT_ROOT}/scripts/runtime/providers/${CLOUD_PROVIDER}.sh"
 
-    echo "ERROR: Provider runtime not found:"
-    echo "       ${PROVIDER_SCRIPT}"
+#########################################
+# Load Provider
+#########################################
+
+if [[ ! -f "${PROVIDER_SCRIPT}" ]]; then
+
+    echo "Provider runtime not found."
+
+    echo "${PROVIDER_SCRIPT}"
+
     exit 1
 
-  fi
+fi
 
-  log "Loading provider runtime..."
-
-  source "${PROVIDER_SCRIPT}"
-
-}
+source "${PROVIDER_SCRIPT}"
 
 #########################################
-# Cleanup docker cache
+# Authenticate
 #########################################
 
-cleanup_images() {
+log "Provider Authentication"
 
-  log "Cleaning Docker cache..."
-
-  docker image prune -af || true
-
-}
+provider_login
 
 #########################################
-# Pull latest image
+# Image
 #########################################
 
-pull_image() {
-
-  FULL_IMAGE="${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
-
-  log "Pulling image: ${FULL_IMAGE}"
-
-  docker pull "${FULL_IMAGE}"
-
-}
+IMAGE="${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
 
 #########################################
-# Replace container
+# Pull
 #########################################
 
-replace_container() {
+log "Pulling latest image"
 
-  log "Stopping previous container..."
+docker pull "${IMAGE}"
 
-  docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+#########################################
+# Stop previous container
+#########################################
 
-  docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+log "Removing previous container"
 
-  log "Starting new container..."
+docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
 
-  docker run \
+docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
+
+#########################################
+# Cleanup
+#########################################
+
+log "Cleaning Docker cache"
+
+docker image prune -af || true
+
+#########################################
+# Run container
+#########################################
+
+log "Starting container"
+
+docker run \
     -d \
-    --name "${CONTAINER_NAME}" \
     --restart unless-stopped \
+    --name "${CONTAINER_NAME}" \
     -p 80:8080 \
-    "${FULL_IMAGE}"
+    "${IMAGE}"
 
-}
+#########################################
+# Health
+#########################################
+
+sleep 5
+
+docker ps
 
 #########################################
 # Finish
 #########################################
 
-finish() {
+log "Deployment completed"
 
-  echo ""
-  echo "==================================="
-  echo "Deployment completed successfully"
-  echo "Container : ${CONTAINER_NAME}"
-  echo "Image     : ${FULL_IMAGE}"
-  echo "==================================="
+echo "Container : ${CONTAINER_NAME}"
 
-}
-
-#########################################
-# Main
-#########################################
-
-main() {
-
-  echo "==================================="
-  echo "Enterprise Multi-Cloud Deployment"
-  echo "==================================="
-
-  validate_environment
-
-  load_provider
-
-  cleanup_images
-
-  pull_image
-
-  replace_container
-
-  finish
-
-}
-
-main "$@"
+echo "Image     : ${IMAGE}"

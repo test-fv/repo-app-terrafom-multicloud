@@ -22,6 +22,10 @@ resource "aws_iam_role" "ec2_role" {
 
 }
 
+##########################################################
+# ECR ReadOnly
+##########################################################
+
 resource "aws_iam_role_policy_attachment" "ecr_readonly" {
 
   role = aws_iam_role.ec2_role.name
@@ -29,6 +33,22 @@ resource "aws_iam_role_policy_attachment" "ecr_readonly" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 
 }
+
+##########################################################
+# AWS Systems Manager
+##########################################################
+
+resource "aws_iam_role_policy_attachment" "ssm_core" {
+
+  role = aws_iam_role.ec2_role.name
+
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+
+}
+
+##########################################################
+# Instance Profile
+##########################################################
 
 resource "aws_iam_instance_profile" "profile" {
 
