@@ -25,8 +25,8 @@ output "registry_username" {
 output "registry_password" {
   description = "Registry password."
 
-  value      = module.registry.registry_password
-  sensitive  = true
+  value     = module.registry.registry_password
+  sensitive = true
 }
 
 output "ssh_user" {
@@ -38,6 +38,6 @@ output "ssh_user" {
 output "ssh_private_key" {
   description = "SSH private key."
 
-  value      = module.compute.ssh_private_key
-  sensitive  = true
+  value     = module.compute.ssh_private_key
+  sensitive = true
 }
