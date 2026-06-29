@@ -9,24 +9,42 @@ on:
       working-directory:
         required: true
         type: string
+    outputs:
+      public_ip:
+        value: ${{ jobs.apply.outputs.public_ip }}
+      instance_id:
+        value: ${{ jobs.apply.outputs.instance_id }}
+      registry_url:
+        value: ${{ jobs.apply.outputs.registry_url }}
+      registry_server:
+        value: ${{ jobs.apply.outputs.registry_server }}
+      repository_name:
+        value: ${{ jobs.apply.outputs.repository_name }}
+      runtime_bucket_name:
+        value: ${{ jobs.apply.outputs.runtime_bucket_name }}
+      runtime_bucket_arn:
+        value: ${{ jobs.apply.outputs.runtime_bucket_arn }}
 
 jobs:
-
   apply:
     runs-on: ubuntu-latest
+
+    outputs:
+      public_ip: ${{ steps.outputs.outputs.public_ip }}
+      instance_id: ${{ steps.outputs.outputs.instance_id }}
+      registry_url: ${{ steps.outputs.outputs.registry_url }}
+      registry_server: ${{ steps.outputs.outputs.registry_server }}
+      repository_name: ${{ steps.outputs.outputs.repository_name }}
+      runtime_bucket_name: ${{ steps.outputs.outputs.runtime_bucket_name }}
+      runtime_bucket_arn: ${{ steps.outputs.outputs.runtime_bucket_arn }}
 
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
 
     steps:
+      - uses: actions/checkout@v4
 
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      # =========================
-      # CONFIGURE AWS (SI APLICA)
-      # =========================
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
         uses: aws-actions/configure-aws-credentials@v4
@@ -35,38 +53,36 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # =========================
-      # TERRAFORM SETUP
-      # =========================
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - name: Azure Login
+        if: inputs.cloud-provider == 'azure'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - uses: hashicorp/setup-terraform@v3
 
       - name: Terraform Init
         run: terraform init -reconfigure -input=false
 
-      # =========================
-      # 🔥 DEBUG REAL (STATE INSPECTION)
-      # =========================
-      - name: DEBUG STATE LIST
-        run: terraform state list || true
-
-      - name: DEBUG TLS PRIVATE KEY CHECK
-        run: terraform state list | grep tls_private_key || true
-
-      - name: DEBUG TERRAFORM OUTPUT RAW
-        run: |
-          echo "=============================="
-          echo "TERRAFORM OUTPUT (RAW)"
-          echo "=============================="
-          terraform output || true
-
-          echo "=============================="
-          echo "TERRAFORM OUTPUT (JSON)"
-          echo "=============================="
-          terraform output -json || true
-
-      # =========================
-      # APPLY
-      # =========================
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
+
+      - id: outputs
+        shell: bash
+        run: |
+          json=$(terraform output -json)
+
+          emit () {
+            local key="$1"
+            local value
+            value=$(echo "$json" | jq -r ".${key}.value // empty")
+            echo "${key}=${value}" >> "$GITHUB_OUTPUT"
+          }
+
+          emit public_ip
+          emit instance_id
+          emit registry_url
+          emit registry_server
+          emit repository_name
+          emit runtime_bucket_name
+          emit runtime_bucket_arn

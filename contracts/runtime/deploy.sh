@@ -1,56 +1,93 @@
 #!/usr/bin/env bash
 
+##############################################################################
+# Enterprise Runtime Launcher
+#
+# This script is the only entry point executed by AWS Systems Manager.
+#
+# It must remain completely independent from:
+#
+#   - Git
+#   - SSH
+#   - Repository layout
+#
+##############################################################################
+
 set -Eeuo pipefail
 
-#########################################
+##############################################################################
+# Locate Runtime
+##############################################################################
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+RUNTIME_ROOT="${SCRIPT_DIR}"
+
+PROVIDERS_DIR="${RUNTIME_ROOT}/providers"
+
+##############################################################################
+# Validate Environment
+##############################################################################
+
+: "${CLOUD_PROVIDER:?CLOUD_PROVIDER not defined}"
+
+: "${REGISTRY_SERVER:?REGISTRY_SERVER not defined}"
+
+: "${REPOSITORY_NAME:?REPOSITORY_NAME not defined}"
+
+: "${IMAGE_TAG:=latest}"
+
+##############################################################################
 # Logging
-#########################################
+##############################################################################
 
 log() {
-    echo ""
+
+    echo
+
     echo "=================================================="
-    echo "[DEPLOY] $1"
+
+    echo "$1"
+
     echo "=================================================="
+
 }
 
-#########################################
-# Required variables
-#########################################
+##############################################################################
+# Select Provider
+##############################################################################
 
-required_vars=(
-    CLOUD_PROVIDER
-    REGISTRY_URL
-    IMAGE_NAME
-    IMAGE_TAG
-    CONTAINER_NAME
-)
+case "${CLOUD_PROVIDER}" in
 
-for var in "${required_vars[@]}"; do
+    aws)
 
-    if [[ -z "${!var:-}" ]]; then
-        echo "ERROR -> Missing environment variable: ${var}"
+        PROVIDER_SCRIPT="${PROVIDERS_DIR}/aws.sh"
+
+        ;;
+
+    azure)
+
+        PROVIDER_SCRIPT="${PROVIDERS_DIR}/azure.sh"
+
+        ;;
+
+    *)
+
+        echo "Unsupported provider: ${CLOUD_PROVIDER}"
+
         exit 1
-    fi
 
-done
+        ;;
 
-#########################################
-# Runtime location
-#########################################
+esac
 
-SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-
-PROJECT_ROOT="$( cd "${SCRIPT_DIR}/../.." && pwd )"
-
-PROVIDER_SCRIPT="${PROJECT_ROOT}/scripts/runtime/providers/${CLOUD_PROVIDER}.sh"
-
-#########################################
-# Load Provider
-#########################################
+##############################################################################
+# Validate Provider
+##############################################################################
 
 if [[ ! -f "${PROVIDER_SCRIPT}" ]]; then
 
-    echo "Provider runtime not found."
+    echo "Provider script not found"
 
     echo "${PROVIDER_SCRIPT}"
 
@@ -58,75 +95,22 @@ if [[ ! -f "${PROVIDER_SCRIPT}" ]]; then
 
 fi
 
-source "${PROVIDER_SCRIPT}"
+chmod +x "${PROVIDER_SCRIPT}"
 
-#########################################
-# Authenticate
-#########################################
+##############################################################################
+# Export Runtime Variables
+##############################################################################
 
-log "Provider Authentication"
+export REGISTRY_SERVER
 
-provider_login
+export REPOSITORY_NAME
 
-#########################################
-# Image
-#########################################
+export IMAGE_TAG
 
-IMAGE="${REGISTRY_URL}/${IMAGE_NAME}:${IMAGE_TAG}"
+##############################################################################
+# Execute Provider
+##############################################################################
 
-#########################################
-# Pull
-#########################################
+log "Executing ${CLOUD_PROVIDER} deployment..."
 
-log "Pulling latest image"
-
-docker pull "${IMAGE}"
-
-#########################################
-# Stop previous container
-#########################################
-
-log "Removing previous container"
-
-docker stop "${CONTAINER_NAME}" >/dev/null 2>&1 || true
-
-docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
-
-#########################################
-# Cleanup
-#########################################
-
-log "Cleaning Docker cache"
-
-docker image prune -af || true
-
-#########################################
-# Run container
-#########################################
-
-log "Starting container"
-
-docker run \
-    -d \
-    --restart unless-stopped \
-    --name "${CONTAINER_NAME}" \
-    -p 80:8080 \
-    "${IMAGE}"
-
-#########################################
-# Health
-#########################################
-
-sleep 5
-
-docker ps
-
-#########################################
-# Finish
-#########################################
-
-log "Deployment completed"
-
-echo "Container : ${CONTAINER_NAME}"
-
-echo "Image     : ${IMAGE}"
+exec "${PROVIDER_SCRIPT}"

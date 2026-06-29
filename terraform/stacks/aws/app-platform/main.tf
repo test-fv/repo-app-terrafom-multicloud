@@ -36,11 +36,21 @@ module "compute" {
   name_prefix           = var.name_prefix
   instance_type         = var.instance_type
   aws_region            = var.aws_region
+
   registry_url          = module.registry.registry_url
+
   instance_profile_name = module.identity.instance_profile_name
 
-  subnet_id         = module.network.subnet_id
-  security_group_id = module.network.security_group_id
+  ############################################################
+  # Runtime
+  ############################################################
+
+  runtime_bucket_name   = module.identity.runtime_bucket_name
+
+  ############################################################
+
+  subnet_id             = module.network.subnet_id
+  security_group_id     = module.network.security_group_id
 
   tags = var.tags
 

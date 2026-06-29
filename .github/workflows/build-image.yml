@@ -1,0 +1,212 @@
+name: Reusable Build Image
+
+on:
+
+  workflow_call:
+
+    inputs:
+
+      cloud-provider:
+        required: true
+        type: string
+
+      registry-server:
+        required: true
+        type: string
+
+      repository-name:
+        required: true
+        type: string
+
+    secrets:
+
+      AWS_ACCESS_KEY_ID:
+        required: false
+
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+
+      AWS_REGION:
+        required: false
+
+      AZURE_CREDENTIALS:
+        required: false
+
+    outputs:
+
+      image-tag:
+        description: Docker image version
+        value: ${{ jobs.build.outputs.image-tag }}
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    outputs:
+
+      image-tag: ${{ steps.version.outputs.version }}
+
+    steps:
+
+      #######################################################
+      # Checkout
+      #######################################################
+
+      - name: Checkout
+
+        uses: actions/checkout@v4
+
+      #######################################################
+      # Generate Version
+      #######################################################
+
+      - name: Generate Version
+
+        id: version
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          SHORT_SHA=$(git rev-parse --short=8 HEAD)
+
+          VERSION="${GITHUB_RUN_NUMBER}-${SHORT_SHA}"
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      #######################################################
+      # AWS
+      #######################################################
+
+      - name: Configure AWS Credentials
+
+        if: inputs.cloud-provider == 'aws'
+
+        uses: aws-actions/configure-aws-credentials@v4
+
+        with:
+
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login Amazon ECR
+
+        if: inputs.cloud-provider == 'aws'
+
+        shell: bash
+
+        run: |
+
+          aws ecr get-login-password \
+            --region "${{ secrets.AWS_REGION }}" \
+          | docker login \
+              --username AWS \
+              --password-stdin \
+              "${{ inputs.registry-server }}"
+
+      #######################################################
+      # Azure
+      #######################################################
+
+      - name: Azure Login
+
+        if: inputs.cloud-provider == 'azure'
+
+        uses: azure/login@v2
+
+        with:
+
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Login Azure Container Registry
+
+        if: inputs.cloud-provider == 'azure'
+
+        shell: bash
+
+        run: |
+
+          az acr login \
+            --name $(echo "${{ inputs.registry-server }}" | cut -d'.' -f1)
+
+      #######################################################
+      # Build
+      #######################################################
+
+      - name: Build Docker Image
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          VERSION="${{ steps.version.outputs.version }}"
+
+          IMAGE_VERSION="${{ inputs.registry-server }}/${{ inputs.repository-name }}:${VERSION}"
+
+          IMAGE_LATEST="${{ inputs.registry-server }}/${{ inputs.repository-name }}:latest"
+
+          echo "Building ${IMAGE_VERSION}"
+
+          docker build \
+            -t "${IMAGE_VERSION}" \
+            -t "${IMAGE_LATEST}" \
+            ./app
+
+      #######################################################
+      # Push
+      #######################################################
+
+      - name: Push Docker Images
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          VERSION="${{ steps.version.outputs.version }}"
+
+          IMAGE_VERSION="${{ inputs.registry-server }}/${{ inputs.repository-name }}:${VERSION}"
+
+          IMAGE_LATEST="${{ inputs.registry-server }}/${{ inputs.repository-name }}:latest"
+
+          echo "Pushing ${IMAGE_VERSION}"
+
+          docker push "${IMAGE_VERSION}"
+
+          echo "Pushing ${IMAGE_LATEST}"
+
+          docker push "${IMAGE_LATEST}"
+
+      #######################################################
+      # Summary
+      #######################################################
+
+      - name: Summary
+
+        shell: bash
+
+        run: |
+
+          echo "======================================"
+
+          echo "Docker Image Published"
+
+          echo "======================================"
+
+          echo "Image : ${{ inputs.repository-name }}"
+
+          echo "Tag   : ${{ steps.version.outputs.version }}"
+
+          echo "Latest: latest"
+
+          echo "======================================"

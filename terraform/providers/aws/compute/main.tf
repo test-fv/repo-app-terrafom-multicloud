@@ -6,7 +6,14 @@ resource "aws_instance" "vm" {
   vpc_security_group_ids = [var.security_group_id]
   iam_instance_profile   = var.instance_profile_name
 
-  user_data = file("${path.module}/user-data.sh")
+  user_data = templatefile(
+    "${path.module}/user-data.sh",
+    {
+      aws_region          = var.aws_region
+      runtime_bucket_name = var.runtime_bucket_name
+      registry_url        = var.registry_url
+    }
+  )
 
   tags = merge(
     var.tags,

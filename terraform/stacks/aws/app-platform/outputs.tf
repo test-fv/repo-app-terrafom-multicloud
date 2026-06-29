@@ -1,6 +1,10 @@
+##############################################################################
+# Compute
+##############################################################################
+
 output "public_ip" {
 
-  description = "Public IP of the application VM."
+  description = "EC2 Public IP"
 
   value = module.compute.public_ip
 
@@ -8,15 +12,19 @@ output "public_ip" {
 
 output "instance_id" {
 
-  description = "EC2 Instance ID."
+  description = "EC2 Instance ID"
 
   value = module.compute.instance_id
 
 }
 
+##############################################################################
+# Registry
+##############################################################################
+
 output "registry_url" {
 
-  description = "Complete ECR repository URL."
+  description = "Container Registry URL"
 
   value = module.registry.registry_url
 
@@ -24,7 +32,7 @@ output "registry_url" {
 
 output "registry_server" {
 
-  description = "ECR Registry hostname."
+  description = "Registry Server"
 
   value = module.registry.registry_server
 
@@ -32,8 +40,40 @@ output "registry_server" {
 
 output "repository_name" {
 
-  description = "ECR repository name."
+  description = "Repository Name"
 
   value = module.registry.repository_name
+
+}
+
+##############################################################################
+# Runtime
+##############################################################################
+
+output "runtime_bucket_name" {
+
+  description = "Runtime Bucket Name"
+
+  value = module.identity.runtime_bucket_name
+
+}
+
+output "runtime_bucket_arn" {
+
+  description = "Runtime Bucket ARN"
+
+  value = module.identity.runtime_bucket_arn
+
+}
+
+##############################################################################
+# Region
+##############################################################################
+
+output "aws_region" {
+
+  description = "AWS Region"
+
+  value = var.aws_region
 
 }

@@ -1,0 +1,209 @@
+name: Publish Runtime
+
+on:
+
+  workflow_call:
+
+    inputs:
+
+      cloud-provider:
+        required: true
+        type: string
+
+      runtime-bucket:
+        required: true
+        type: string
+
+    secrets:
+
+      AWS_ACCESS_KEY_ID:
+        required: false
+
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+
+      AWS_REGION:
+        required: false
+
+jobs:
+
+  publish:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      ############################################################
+      # Checkout
+      ############################################################
+
+      - name: Checkout
+
+        uses: actions/checkout@v4
+
+      ############################################################
+      # Configure AWS
+      ############################################################
+
+      - name: Configure AWS Credentials
+
+        if: inputs.cloud-provider == 'aws'
+
+        uses: aws-actions/configure-aws-credentials@v4
+
+        with:
+
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      ############################################################
+      # Generate Version
+      ############################################################
+
+      - name: Generate Version
+
+        id: version
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          SHORT_SHA=$(git rev-parse --short=8 HEAD)
+
+          VERSION="${GITHUB_RUN_NUMBER}-${SHORT_SHA}"
+
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      ############################################################
+      # Build Runtime Artifact
+      ############################################################
+
+      - name: Build Runtime Artifact
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          rm -rf artifact
+
+          mkdir -p artifact/runtime
+
+          mkdir -p artifact/runtime/providers
+
+          ##########################################################
+          # Validate Runtime
+          ##########################################################
+
+          test -f contracts/runtime/deploy.sh
+
+          test -f contracts/runtime/compose.yaml
+
+          test -f contracts/runtime/providers/aws.sh
+
+          ##########################################################
+          # Runtime
+          ##########################################################
+
+          cp \
+            contracts/runtime/deploy.sh \
+            artifact/runtime/
+
+          cp \
+            contracts/runtime/compose.yaml \
+            artifact/runtime/
+
+          cp \
+            contracts/runtime/providers/aws.sh \
+            artifact/runtime/providers/
+
+          if [[ -f contracts/runtime/providers/azure.sh ]]; then
+
+            cp \
+              contracts/runtime/providers/azure.sh \
+              artifact/runtime/providers/
+
+          fi
+
+          ##########################################################
+          # Package
+          ##########################################################
+
+          tar \
+            --owner=0 \
+            --group=0 \
+            -czf deployment-artifact.tar.gz \
+            artifact/runtime
+
+          sha256sum deployment-artifact.tar.gz \
+            > deployment-artifact.tar.gz.sha256
+
+      ############################################################
+      # Upload Version
+      ############################################################
+
+      - name: Upload Version
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          aws s3 cp \
+            deployment-artifact.tar.gz \
+            s3://${{ inputs.runtime-bucket }}/artifacts/${{ steps.version.outputs.version }}.tar.gz
+
+          aws s3 cp \
+            deployment-artifact.tar.gz.sha256 \
+            s3://${{ inputs.runtime-bucket }}/artifacts/${{ steps.version.outputs.version }}.tar.gz.sha256
+
+      ############################################################
+      # Upload Latest
+      ############################################################
+
+      - name: Upload Latest
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          aws s3 cp \
+            deployment-artifact.tar.gz \
+            s3://${{ inputs.runtime-bucket }}/artifacts/latest.tar.gz
+
+          aws s3 cp \
+            deployment-artifact.tar.gz.sha256 \
+            s3://${{ inputs.runtime-bucket }}/artifacts/latest.tar.gz.sha256
+
+      ############################################################
+      # Summary
+      ############################################################
+
+      - name: Summary
+
+        shell: bash
+
+        run: |
+
+          echo "======================================"
+
+          echo "Runtime Published"
+
+          echo "======================================"
+
+          echo "Bucket : ${{ inputs.runtime-bucket }}"
+
+          echo "Version: ${{ steps.version.outputs.version }}"
+
+          echo "Artifact: deployment-artifact.tar.gz"
+
+          echo "======================================"

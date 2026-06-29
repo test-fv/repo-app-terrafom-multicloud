@@ -54,6 +54,14 @@ variable "registry_url" {
 
 }
 
+variable "runtime_bucket_name" {
+
+  description = "Private S3 bucket that stores the deployment runtime."
+
+  type = string
+
+}
+
 variable "aws_region" {
 
   description = "AWS region where resources are deployed."

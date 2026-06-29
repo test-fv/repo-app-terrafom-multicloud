@@ -1,23 +1,29 @@
-name: Reusable Terraform Outputs
+name: Read Terraform Outputs
 
 on:
+
   workflow_call:
 
     inputs:
-      cloud-provider:
-        required: true
-        type: string
 
       working-directory:
         required: true
         type: string
 
+      cloud-provider:
+        required: true
+        type: string
+
     outputs:
-      vm_ip:
-        value: ${{ jobs.terraform_outputs.outputs.vm_ip }}
+
+      public_ip:
+        value: ${{ jobs.terraform_outputs.outputs.public_ip }}
 
       instance_id:
         value: ${{ jobs.terraform_outputs.outputs.instance_id }}
+
+      registry_url:
+        value: ${{ jobs.terraform_outputs.outputs.registry_url }}
 
       registry_server:
         value: ${{ jobs.terraform_outputs.outputs.registry_server }}
@@ -25,11 +31,11 @@ on:
       repository_name:
         value: ${{ jobs.terraform_outputs.outputs.repository_name }}
 
-      ssh_user:
-        value: ${{ jobs.terraform_outputs.outputs.ssh_user }}
+      runtime_bucket_name:
+        value: ${{ jobs.terraform_outputs.outputs.runtime_bucket_name }}
 
-      ssh_private_key:
-        value: ${{ jobs.terraform_outputs.outputs.ssh_private_key }}
+      runtime_bucket_arn:
+        value: ${{ jobs.terraform_outputs.outputs.runtime_bucket_arn }}
 
 jobs:
 
@@ -38,26 +44,34 @@ jobs:
     runs-on: ubuntu-latest
 
     outputs:
-      vm_ip: ${{ steps.tf_outputs.outputs.vm_ip }}
-      instance_id: ${{ steps.tf_outputs.outputs.instance_id }}
-      registry_server: ${{ steps.tf_outputs.outputs.registry_server }}
-      repository_name: ${{ steps.tf_outputs.outputs.repository_name }}
-      ssh_user: ${{ steps.tf_outputs.outputs.ssh_user }}
-      ssh_private_key: ${{ steps.tf_outputs.outputs.ssh_private_key }}
+
+      public_ip: ${{ steps.export.outputs.public_ip }}
+
+      instance_id: ${{ steps.export.outputs.instance_id }}
+
+      registry_url: ${{ steps.export.outputs.registry_url }}
+
+      registry_server: ${{ steps.export.outputs.registry_server }}
+
+      repository_name: ${{ steps.export.outputs.repository_name }}
+
+      runtime_bucket_name: ${{ steps.export.outputs.runtime_bucket_name }}
+
+      runtime_bucket_arn: ${{ steps.export.outputs.runtime_bucket_arn }}
+
+    defaults:
+
+      run:
+        working-directory: ${{ inputs.working-directory }}
 
     steps:
 
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Azure Login
-        if: inputs.cloud-provider == 'azure'
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      ##########################################################
+      # AWS Login
+      ##########################################################
 
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
@@ -67,84 +81,40 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Terraform Init
-        working-directory: ${{ inputs.working-directory }}
-        run: terraform init -reconfigure -input=false
+      ##########################################################
+      # Azure Login
+      ##########################################################
 
-      - name: Read Terraform Outputs
-        id: tf_outputs
-        working-directory: ${{ inputs.working-directory }}
-        shell: bash
-        run: |
-
-          echo "=== TERRAFORM RAW OUTPUTS ==="
-          terraform output
-
-          VM_IP=$(terraform output -raw vm_ip)
-          INSTANCE_ID=$(terraform output -raw instance_id)
-          REGISTRY_SERVER=$(terraform output -raw registry_server)
-          REPOSITORY_NAME=$(terraform output -raw repository_name)
-          SSH_USER=$(terraform output -raw ssh_user)
-          SSH_PRIVATE_KEY=$(terraform output -raw ssh_private_key)
-
-          echo "vm_ip=$VM_IP" >> "$GITHUB_OUTPUT"
-          echo "instance_id=$INSTANCE_ID" >> "$GITHUB_OUTPUT"
-          echo "registry_server=$REGISTRY_SERVER" >> "$GITHUB_OUTPUT"
-          echo "repository_name=$REPOSITORY_NAME" >> "$GITHUB_OUTPUT"
-          echo "ssh_user=$SSH_USER" >> "$GITHUB_OUTPUT"
-
-          echo "ssh_private_key<<EOF" >> "$GITHUB_OUTPUT"
-          echo "$SSH_PRIVATE_KEY" >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
-
-      - name: Export Terraform Outputs JSON
-        working-directory: ${{ inputs.working-directory }}
-        run: |
-          terraform output -json > outputs.json
-
-      - name: Upload Terraform Outputs Artifact
-        uses: actions/upload-artifact@v4
+      - name: Azure Login
+        if: inputs.cloud-provider == 'azure'
+        uses: azure/login@v2
         with:
-          name: tf-outputs-${{ inputs.cloud-provider }}
-          path: ${{ inputs.working-directory }}/outputs.json
-          if-no-files-found: error
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - name: Debug Fingerprint
-        working-directory: ${{ inputs.working-directory }}
+      ##########################################################
+      # Terraform
+      ##########################################################
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init -input=false
+
+      ##########################################################
+      # Export Outputs
+      ##########################################################
+
+      - id: export
         shell: bash
         run: |
 
-          terraform output -raw ssh_private_key > private.pem
+          json=$(terraform output -json)
 
-          chmod 600 private.pem
-
-          echo "=================================="
-          echo "SSH PRIVATE KEY FINGERPRINT (MD5)"
-          echo "=================================="
-
-          ssh-keygen -E md5 -lf private.pem
-
-          echo ""
-
-          echo "=================================="
-          echo "SSH PRIVATE KEY FINGERPRINT (SHA256)"
-          echo "=================================="
-
-          ssh-keygen -lf private.pem
-
-      - name: Debug Step Outputs
-        run: |
-          echo "======================================="
-          echo "STEP OUTPUTS"
-          echo "======================================="
-          echo "VM_IP=${{ steps.tf_outputs.outputs.vm_ip }}"
-          echo "INSTANCE_ID=${{ steps.tf_outputs.outputs.instance_id }}"
-          echo "REGISTRY_SERVER=${{ steps.tf_outputs.outputs.registry_server }}"
-          echo "REPOSITORY_NAME=${{ steps.tf_outputs.outputs.repository_name }}"
-          echo "SSH_USER=${{ steps.tf_outputs.outputs.ssh_user }}"
-          echo "======================================="
-
-      - name: Debug Raw Variables
-        run: |
-          echo "SERVER=[${{ steps.tf_outputs.outputs.registry_server }}]"
-          echo "REPOSITORY=[${{ steps.tf_outputs.outputs.repository_name }}]"
+          echo "public_ip=$(echo "$json" | jq -r '.public_ip.value')" >> "$GITHUB_OUTPUT"
+          echo "instance_id=$(echo "$json" | jq -r '.instance_id.value')" >> "$GITHUB_OUTPUT"
+          echo "registry_url=$(echo "$json" | jq -r '.registry_url.value')" >> "$GITHUB_OUTPUT"
+          echo "registry_server=$(echo "$json" | jq -r '.registry_server.value')" >> "$GITHUB_OUTPUT"
+          echo "repository_name=$(echo "$json" | jq -r '.repository_name.value')" >> "$GITHUB_OUTPUT"
+          echo "runtime_bucket_name=$(echo "$json" | jq -r '.runtime_bucket_name.value')" >> "$GITHUB_OUTPUT"
+          echo "runtime_bucket_arn=$(echo "$json" | jq -r '.runtime_bucket_arn.value')" >> "$GITHUB_OUTPUT"

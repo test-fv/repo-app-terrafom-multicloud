@@ -1,0 +1,106 @@
+name: Reusable Deploy SSM
+
+on:
+
+  workflow_call:
+
+    inputs:
+
+      cloud-provider:
+        required: true
+        type: string
+
+      instance-id:
+        required: true
+        type: string
+
+      runtime-bucket:
+        required: true
+        type: string
+
+      registry-server:
+        required: true
+        type: string
+
+      repository-name:
+        required: true
+        type: string
+
+      image-tag:
+        required: false
+        default: latest
+        type: string
+
+    secrets:
+
+      AWS_ACCESS_KEY_ID:
+        required: false
+
+      AWS_SECRET_ACCESS_KEY:
+        required: false
+
+      AWS_REGION:
+        required: false
+
+jobs:
+
+  deploy:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      ############################################################
+      # Checkout
+      ############################################################
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      ############################################################
+      # AWS Credentials
+      ############################################################
+
+      - name: Configure AWS Credentials
+        if: inputs.cloud-provider == 'aws'
+        uses: aws-actions/configure-aws-credentials@v4
+
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      ############################################################
+      # Build Bootstrap
+      ############################################################
+
+      - name: Build Bootstrap Script
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          cat > bootstrap.sh <<EOF
+          cat >/tmp/runtime.env <<'ENV'
+          RUNTIME_BUCKET=${{ inputs.runtime-bucket }}
+          CLOUD_PROVIDER=${{ inputs.cloud-provider }}
+          AWS_REGION=${{ secrets.AWS_REGION }}
+          REGISTRY_SERVER=${{ inputs.registry-server }}
+          REPOSITORY_NAME=${{ inputs.repository-name }}
+          IMAGE_TAG=${{ inputs.image-tag }}
+          ENV
+
+          EOF
+
+          cat contracts/bootstrap/deploy-remote.sh >> bootstrap.sh
+
+          chmod +x bootstrap.sh
+
+          echo "Bootstrap generated."
+
+      ############################################################
+      # Next step:
+      # Execute through AWS Systems Manager
+      ############################################################

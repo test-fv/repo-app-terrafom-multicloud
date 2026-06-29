@@ -1,106 +1,75 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-set -Eeuo pipefail
+set -euo pipefail
 
-exec > >(tee /var/log/user-data.log)
-exec 2>&1
+#########################################
+# Constants
+#########################################
 
-readonly APP_HOME="/home/ubuntu/app"
+readonly APP_HOME="/opt/app-runtime"
 
-echo "========================================"
+echo "==================================="
 echo "Provisioning AWS Runtime"
-echo "========================================"
+echo "==================================="
 
 export DEBIAN_FRONTEND=noninteractive
 
-##########################################################
-# OS
-##########################################################
+#########################################
+# Packages
+#########################################
 
 apt-get update -y
-
-apt-get upgrade -y
-
-##########################################################
-# Packages
-##########################################################
 
 apt-get install -y \
     docker.io \
     curl \
     unzip \
-    git \
-    jq \
     awscli
 
-##########################################################
+#########################################
 # Docker
-##########################################################
+#########################################
 
 systemctl enable docker
-
-systemctl restart docker
+systemctl start docker
 
 if ! groups ubuntu | grep -q docker; then
     usermod -aG docker ubuntu
 fi
 
-##########################################################
-# AWS Systems Manager Agent
-##########################################################
-
-if ! snap list amazon-ssm-agent >/dev/null 2>&1; then
-
-    snap install amazon-ssm-agent --classic
-
-fi
-
-systemctl enable snap.amazon-ssm-agent.amazon-ssm-agent.service
-
-systemctl restart snap.amazon-ssm-agent.amazon-ssm-agent.service
-
-##########################################################
+#########################################
 # Runtime folders
-##########################################################
+#########################################
 
 mkdir -p "${APP_HOME}"
+mkdir -p /usr/local/bin
 
-mkdir -p "${APP_HOME}/contracts/runtime"
+#########################################
+# Deploy Runtime
+#########################################
 
-mkdir -p "${APP_HOME}/scripts/runtime/providers"
+cat > /usr/local/bin/deploy.sh <<'EOF'
+#!/bin/bash
+
+export APP_HOME="/opt/app-runtime"
+
+/opt/app-runtime/deploy.sh
+EOF
+
+chmod +x /usr/local/bin/deploy.sh
+
+#########################################
+# Ownership
+#########################################
 
 chown -R ubuntu:ubuntu "${APP_HOME}"
 
-##########################################################
-# Diagnostics
-##########################################################
-
-echo ""
-echo "Docker Version"
-
-docker --version
-
-echo ""
-echo "AWS CLI Version"
-
-aws --version
-
-echo ""
-echo "SSM Agent"
-
-systemctl status snap.amazon-ssm-agent.amazon-ssm-agent.service --no-pager || true
-
-##########################################################
+#########################################
 # Cleanup
-##########################################################
+#########################################
 
 apt-get clean
 
-##########################################################
-# Finish
-##########################################################
-
-echo ""
-echo "========================================"
+echo "==================================="
 echo "Provisioning completed"
-echo "========================================"
+echo "==================================="
