@@ -64,7 +64,7 @@ resource "aws_s3_bucket" "runtime" {
 
   lifecycle {
 
-  prevent_destroy = var.runtime_bucket_prevent_destroy
+  prevent_destroy = true
 
   }
 
