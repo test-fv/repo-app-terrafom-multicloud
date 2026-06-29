@@ -64,7 +64,7 @@ resource "aws_s3_bucket" "runtime" {
 
   lifecycle {
 
-  prevent_destroy = true
+    prevent_destroy = true
 
   }
 
@@ -143,7 +143,7 @@ resource "aws_iam_policy" "runtime_bucket" {
 
       {
 
-        Sid    = "RuntimeBucket"
+        Sid = "RuntimeBucket"
 
         Effect = "Allow"
 

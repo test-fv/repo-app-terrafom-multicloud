@@ -63,18 +63,18 @@ resource "azurerm_linux_virtual_machine" "vm" {
     version   = "latest"
   }
 
-custom_data = base64encode(
-  templatefile("${path.module}/cloud-init.yaml", {
+  custom_data = base64encode(
+    templatefile("${path.module}/cloud-init.yaml", {
 
-    admin_username = var.admin_username
+      admin_username = var.admin_username
 
-    deploy_sh = file("${path.root}/../../../contracts/runtime/deploy.sh")
+      deploy_sh = file("${path.root}/../../../contracts/runtime/deploy.sh")
 
-    azure_provider_sh = file("${path.root}/../../../scripts/runtime/providers/azure.sh")
+      azure_provider_sh = file("${path.root}/../../../scripts/runtime/providers/azure.sh")
 
-    aws_provider_sh = file("${path.root}/../../../scripts/runtime/providers/aws.sh")
-  })
-)
+      aws_provider_sh = file("${path.root}/../../../scripts/runtime/providers/aws.sh")
+    })
+  )
 
   identity {
     type = "UserAssigned"
