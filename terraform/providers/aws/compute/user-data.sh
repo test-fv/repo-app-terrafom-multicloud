@@ -41,7 +41,7 @@ fi
 # Runtime folders
 #########################################
 
-mkdir -p "${APP_HOME}"
+mkdir -p "$${APP_HOME}"
 mkdir -p /usr/local/bin
 
 #########################################
@@ -62,7 +62,7 @@ chmod +x /usr/local/bin/deploy.sh
 # Ownership
 #########################################
 
-chown -R ubuntu:ubuntu "${APP_HOME}"
+chown -R ubuntu:ubuntu "$${APP_HOME}"
 
 #########################################
 # Cleanup
