@@ -114,14 +114,12 @@ jobs:
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.12.2
-          
-      - name: Show Terraform State
-        run: terraform state list
 
+      ############################################################
+      # Terraform Init
+      ############################################################
 
       - name: Terraform Init
-        env:
-          TF_WORKING_DIR: ${{ inputs.working-directory }}
         run: |
           terraform init \
             -reconfigure \
@@ -130,7 +128,17 @@ jobs:
             -backend-config="key=${{ vars.TF_BACKEND_KEY }}" \
             -backend-config="region=${{ secrets.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ vars.TF_BACKEND_LOCK_TABLE }}"
-        
+
+      ############################################################
+      # Debug State
+      ############################################################
+
+      - name: Show Terraform State
+        run: terraform state list
+
+      ############################################################
+      # Apply
+      ############################################################
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
