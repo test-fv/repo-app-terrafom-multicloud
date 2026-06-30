@@ -1,82 +1,164 @@
 name: Terraform Apply
 
 on:
+
   workflow_call:
+
     inputs:
+
       cloud-provider:
         required: true
         type: string
-      working-directory:
-        required: true
-        type: string
+
     outputs:
+
       public_ip:
         value: ${{ jobs.apply.outputs.public_ip }}
+
       instance_id:
         value: ${{ jobs.apply.outputs.instance_id }}
+
       registry_url:
         value: ${{ jobs.apply.outputs.registry_url }}
+
       registry_server:
         value: ${{ jobs.apply.outputs.registry_server }}
+
       repository_name:
         value: ${{ jobs.apply.outputs.repository_name }}
+
       runtime_bucket_name:
         value: ${{ jobs.apply.outputs.runtime_bucket_name }}
+
       runtime_bucket_arn:
         value: ${{ jobs.apply.outputs.runtime_bucket_arn }}
 
 jobs:
+
   apply:
+
     runs-on: ubuntu-latest
 
+    env:
+
+      TF_WORKING_DIR: ${{ inputs.cloud-provider == 'aws' && 'terraform/stacks/aws/app-platform' || 'terraform/stacks/azure/app-platform' }}
+
     outputs:
+
       public_ip: ${{ steps.outputs.outputs.public_ip }}
+
       instance_id: ${{ steps.outputs.outputs.instance_id }}
+
       registry_url: ${{ steps.outputs.outputs.registry_url }}
+
       registry_server: ${{ steps.outputs.outputs.registry_server }}
+
       repository_name: ${{ steps.outputs.outputs.repository_name }}
+
       runtime_bucket_name: ${{ steps.outputs.outputs.runtime_bucket_name }}
+
       runtime_bucket_arn: ${{ steps.outputs.outputs.runtime_bucket_arn }}
 
     defaults:
+
       run:
-        working-directory: ${{ inputs.working-directory }}
+
+        working-directory: ${{ env.TF_WORKING_DIR }}
 
     steps:
-      - uses: actions/checkout@v4
+
+      ############################################################
+      # Checkout
+      ############################################################
+
+      - name: Checkout
+
+        uses: actions/checkout@v4
+
+      ############################################################
+      # AWS Credentials
+      ############################################################
 
       - name: Configure AWS Credentials
+
         if: inputs.cloud-provider == 'aws'
+
         uses: aws-actions/configure-aws-credentials@v4
+
         with:
+
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
           aws-region: ${{ secrets.AWS_REGION }}
 
+      ############################################################
+      # Azure Login
+      ############################################################
+
       - name: Azure Login
+
         if: inputs.cloud-provider == 'azure'
+
         uses: azure/login@v2
+
         with:
+
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-      - uses: hashicorp/setup-terraform@v3
+      ############################################################
+      # Terraform
+      ############################################################
+
+      - name: Setup Terraform
+
+        uses: hashicorp/setup-terraform@v3
+
+        with:
+
+          terraform_version: 1.12.2
+
+      ############################################################
+      # Init
+      ############################################################
 
       - name: Terraform Init
+
         run: terraform init -reconfigure -input=false
 
+      ############################################################
+      # Apply
+      ############################################################
+
       - name: Terraform Apply
+
         run: terraform apply -auto-approve -input=false
 
+      ############################################################
+      # Outputs
+      ############################################################
+
       - id: outputs
+
         shell: bash
+
         run: |
+
+          set -Eeuo pipefail
+
           json=$(terraform output -json)
 
-          emit () {
+          emit() {
+
             local key="$1"
+
             local value
+
             value=$(echo "$json" | jq -r ".${key}.value // empty")
+
             echo "${key}=${value}" >> "$GITHUB_OUTPUT"
+
           }
 
           emit public_ip

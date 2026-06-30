@@ -18,16 +18,6 @@ on:
           - aws
           - azure
 
-      working-directory:
-
-        description: Terraform Working Directory
-
-        required: true
-
-        default: terraform
-
-        type: string
-
 jobs:
 
   ############################################################
@@ -41,8 +31,6 @@ jobs:
     with:
 
       cloud-provider: ${{ inputs.cloud-provider }}
-
-      working-directory: ${{ inputs.working-directory }}
 
     secrets: inherit
 
@@ -59,8 +47,6 @@ jobs:
     with:
 
       cloud-provider: ${{ inputs.cloud-provider }}
-
-      working-directory: ${{ inputs.working-directory }}
 
     secrets: inherit
 
@@ -88,9 +74,7 @@ jobs:
 
   build-image:
 
-    needs:
-      - terraform-apply
-      - publish-runtime
+    needs: terraform-apply
 
     uses: ./.github/workflows/build-image.yml
 
@@ -111,6 +95,7 @@ jobs:
   deploy:
 
     needs:
+
       - terraform-apply
       - publish-runtime
       - build-image

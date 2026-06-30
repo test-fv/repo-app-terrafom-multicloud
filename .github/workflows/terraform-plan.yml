@@ -1,15 +1,12 @@
 name: Reusable Terraform Plan
 
 on:
+
   workflow_call:
 
     inputs:
 
       cloud-provider:
-        required: true
-        type: string
-
-      working-directory:
         required: true
         type: string
 
@@ -19,43 +16,96 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    env:
+
+      TF_WORKING_DIR: ${{ inputs.cloud-provider == 'aws' && 'terraform/stacks/aws/app-platform' || 'terraform/stacks/azure/app-platform' }}
+
     defaults:
+
       run:
-        working-directory: ${{ inputs.working-directory }}
+
+        working-directory: ${{ env.TF_WORKING_DIR }}
 
     steps:
+
+      ############################################################
+      # Checkout
+      ############################################################
 
       - name: Checkout
         uses: actions/checkout@v4
 
+      ############################################################
+      # Terraform
+      ############################################################
+
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.2
+
+      ############################################################
+      # Azure Login
+      ############################################################
 
       - name: Azure Login
+
         if: inputs.cloud-provider == 'azure'
+
         uses: azure/login@v2
+
         with:
+
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
+      ############################################################
+      # AWS Credentials
+      ############################################################
+
       - name: Configure AWS Credentials
+
         if: inputs.cloud-provider == 'aws'
+
         uses: aws-actions/configure-aws-credentials@v4
+
         with:
+
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+      ############################################################
+      # Init
+      ############################################################
+
       - name: Terraform Init
+
         run: terraform init -reconfigure -input=false
 
+      ############################################################
+      # Format
+      ############################################################
+
       - name: Terraform Format
+
         run: terraform fmt -check -diff -recursive
 
+      ############################################################
+      # Validate
+      ############################################################
+
       - name: Terraform Validate
+
         run: terraform validate
 
+      ############################################################
+      # Plan
+      ############################################################
+
       - name: Terraform Plan
+
         run: |
+
           terraform plan \
             -input=false \
-            -no-color \
+            -no-color
