@@ -116,7 +116,17 @@ jobs:
           terraform_version: 1.12.2
 
       - name: Terraform Init
-        run: terraform init -reconfigure -input=false
+        env:
+          TF_WORKING_DIR: ${{ inputs.working-directory }}
+        run: |
+          terraform init \
+            -reconfigure \
+            -input=false \
+            -backend-config="bucket=${{ vars.TF_BACKEND_BUCKET }}" \
+            -backend-config="key=${{ vars.TF_BACKEND_KEY }}" \
+            -backend-config="region=${{ secrets.AWS_REGION }}" \
+            -backend-config="dynamodb_table=${{ vars.TF_BACKEND_LOCK_TABLE }}"
+        
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
