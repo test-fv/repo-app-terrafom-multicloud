@@ -138,29 +138,20 @@ jobs:
         shell: bash
         run: |
           echo "========== VPCS =========="
-          aws ec2 describe-vpcs \
-            --query "Vpcs[*].[VpcId,CidrBlock,Tags]" \
-            --output table
+          aws ec2 describe-vpcs --output json
 
           echo "========== EC2 =========="
-          aws ec2 describe-instances \
-            --query "Reservations[*].Instances[*].[InstanceId,State.Name,Tags]" \
-            --output table
+          aws ec2 describe-instances --output json
 
           echo "========== ECR =========="
-          aws ecr describe-repositories \
-            --query "repositories[*].[repositoryName,repositoryArn]" \
-            --output table
+          aws ecr describe-repositories --output json
 
           echo "========== IAM ROLES =========="
-          aws iam list-roles \
-            --query "Roles[?contains(RoleName,'enterprise')].[RoleName]" \
-            --output table
+          aws iam list-roles --output json
 
           echo "========== S3 =========="
-          aws s3api list-buckets \
-            --query "Buckets[*].Name" \
-            --output table            
+          aws s3api list-buckets --output json       
+          
       ############################################################
       # Debug State
       ############################################################
