@@ -130,6 +130,38 @@ jobs:
             -backend-config="dynamodb_table=${{ vars.TF_BACKEND_LOCK_TABLE }}"
 
       ############################################################
+      # Debug AWS Resources
+      ############################################################
+
+      - name: Show Existing AWS Resources
+        if: inputs.cloud-provider == 'aws'
+        shell: bash
+        run: |
+          echo "========== VPCS =========="
+          aws ec2 describe-vpcs \
+            --query "Vpcs[*].[VpcId,CidrBlock,Tags]" \
+            --output table
+
+          echo "========== EC2 =========="
+          aws ec2 describe-instances \
+            --query "Reservations[*].Instances[*].[InstanceId,State.Name,Tags]" \
+            --output table
+
+          echo "========== ECR =========="
+          aws ecr describe-repositories \
+            --query "repositories[*].[repositoryName,repositoryArn]" \
+            --output table
+
+          echo "========== IAM ROLES =========="
+          aws iam list-roles \
+            --query "Roles[?contains(RoleName,'enterprise')].[RoleName]" \
+            --output table
+
+          echo "========== S3 =========="
+          aws s3api list-buckets \
+            --query "Buckets[*].Name" \
+            --output table            
+      ############################################################
       # Debug State
       ############################################################
 
