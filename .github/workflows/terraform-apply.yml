@@ -41,22 +41,39 @@ jobs:
 
     env:
 
+      ############################################################
+      # Stack
+      ############################################################
+
       TF_WORKING_DIR: ${{ inputs.cloud-provider == 'aws' && 'terraform/stacks/aws/app-platform' || 'terraform/stacks/azure/app-platform' }}
+
+      ############################################################
+      # Terraform Variables
+      ############################################################
+
+      TF_VAR_name_prefix: ${{ vars.NAME_PREFIX }}
+      TF_VAR_instance_type: ${{ vars.TF_VAR_INSTANCE_TYPE }}
+      TF_VAR_repository_name: ${{ vars.TF_VAR_REPOSITORY_NAME }}
+      TF_VAR_aws_region: ${{ vars.TF_VAR_AWS_REGION }}
+
+      TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
+      TF_VAR_subnet_cidr: ${{ vars.SUBNET_CIDR }}
+
+      TF_VAR_tags: >
+        {
+          "Project":"Enterprise",
+          "Environment":"Production",
+          "ManagedBy":"Terraform"
+        }
 
     outputs:
 
       public_ip: ${{ steps.outputs.outputs.public_ip }}
-
       instance_id: ${{ steps.outputs.outputs.instance_id }}
-
       registry_url: ${{ steps.outputs.outputs.registry_url }}
-
       registry_server: ${{ steps.outputs.outputs.registry_server }}
-
       repository_name: ${{ steps.outputs.outputs.repository_name }}
-
       runtime_bucket_name: ${{ steps.outputs.outputs.runtime_bucket_name }}
-
       runtime_bucket_arn: ${{ steps.outputs.outputs.runtime_bucket_arn }}
 
     defaults:
@@ -67,72 +84,41 @@ jobs:
 
     steps:
 
-      ############################################################
-      # Checkout
-      ############################################################
-
-      - name: Checkout
-
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       ############################################################
-      # AWS Credentials
+      # AWS
       ############################################################
 
       - name: Configure AWS Credentials
-
         if: inputs.cloud-provider == 'aws'
-
         uses: aws-actions/configure-aws-credentials@v4
-
         with:
-
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
           aws-region: ${{ secrets.AWS_REGION }}
 
       ############################################################
-      # Azure Login
+      # Azure
       ############################################################
 
       - name: Azure Login
-
         if: inputs.cloud-provider == 'azure'
-
         uses: azure/login@v2
-
         with:
-
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       ############################################################
-      # Terraform
-      ############################################################
 
       - name: Setup Terraform
-
         uses: hashicorp/setup-terraform@v3
-
         with:
-
           terraform_version: 1.12.2
 
-      ############################################################
-      # Init
-      ############################################################
-
       - name: Terraform Init
-
         run: terraform init -reconfigure -input=false
 
-      ############################################################
-      # Apply
-      ############################################################
-
       - name: Terraform Apply
-
         run: terraform apply -auto-approve -input=false
 
       ############################################################
@@ -140,16 +126,14 @@ jobs:
       ############################################################
 
       - id: outputs
-
         shell: bash
-
         run: |
 
           set -Eeuo pipefail
 
           json=$(terraform output -json)
 
-          emit() {
+          emit () {
 
             local key="$1"
 
