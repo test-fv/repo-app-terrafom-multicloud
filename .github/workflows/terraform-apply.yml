@@ -115,6 +115,13 @@ jobs:
         with:
           terraform_version: 1.12.2
 
+          
+
+      - name: Show State
+        run: |
+          terraform state pull
+
+
       ############################################################
       # Terraform Init
       ############################################################
