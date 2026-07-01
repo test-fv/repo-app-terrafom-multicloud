@@ -1,12 +1,15 @@
 name: Reusable Terraform Plan
 
 on:
-
   workflow_call:
 
     inputs:
 
       cloud-provider:
+        required: true
+        type: string
+
+      working-directory:
         required: true
         type: string
 
@@ -18,21 +21,10 @@ jobs:
 
     env:
 
-      ############################################################
-      # Stack
-      ############################################################
-
-      TF_WORKING_DIR: ${{ inputs.cloud-provider == 'aws' && 'terraform/stacks/aws/app-platform' || 'terraform/stacks/azure/app-platform' }}
-
-      ############################################################
-      # Terraform Variables
-      ############################################################
-
       TF_VAR_name_prefix: ${{ vars.NAME_PREFIX }}
       TF_VAR_instance_type: ${{ vars.TF_VAR_INSTANCE_TYPE }}
       TF_VAR_repository_name: ${{ vars.TF_VAR_REPOSITORY_NAME }}
       TF_VAR_aws_region: ${{ vars.TF_VAR_AWS_REGION }}
-
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_subnet_cidr: ${{ vars.SUBNET_CIDR }}
 
@@ -46,8 +38,7 @@ jobs:
     defaults:
 
       run:
-
-        working-directory: ${{ env.TF_WORKING_DIR }}
+        working-directory: ${{ inputs.working-directory }}
 
     steps:
 
@@ -82,10 +73,10 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       ############################################################
+      # Terraform Init
+      ############################################################
 
       - name: Terraform Init
-        env:
-          TF_WORKING_DIR: ${{ inputs.working-directory }}
         run: |
           terraform init \
             -reconfigure \
@@ -95,11 +86,32 @@ jobs:
             -backend-config="region=${{ secrets.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ vars.TF_BACKEND_LOCK_TABLE }}"
 
+      ############################################################
+      # Debug State
+      ############################################################
+
+      - name: Show Remote State
+        run: terraform state pull
+
+      - name: Show Terraform State
+        run: terraform state list
+
+      ############################################################
+      # Terraform Checks
+      ############################################################
+
       - name: Terraform Format
         run: terraform fmt -check -diff -recursive
 
       - name: Terraform Validate
         run: terraform validate
 
+      ############################################################
+      # Terraform Plan
+      ############################################################
+
       - name: Terraform Plan
-        run: terraform plan -input=false -no-color
+        run: |
+          terraform plan \
+            -input=false \
+            -no-color

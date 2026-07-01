@@ -1,61 +1,41 @@
 name: Terraform Apply
 
 on:
-
   workflow_call:
-
     inputs:
-
       cloud-provider:
         required: true
         type: string
 
     outputs:
-
       public_ip:
         value: ${{ jobs.apply.outputs.public_ip }}
-
       instance_id:
         value: ${{ jobs.apply.outputs.instance_id }}
-
       registry_url:
         value: ${{ jobs.apply.outputs.registry_url }}
-
       registry_server:
         value: ${{ jobs.apply.outputs.registry_server }}
-
       repository_name:
         value: ${{ jobs.apply.outputs.repository_name }}
-
       runtime_bucket_name:
         value: ${{ jobs.apply.outputs.runtime_bucket_name }}
-
       runtime_bucket_arn:
         value: ${{ jobs.apply.outputs.runtime_bucket_arn }}
 
 jobs:
-
   apply:
 
     runs-on: ubuntu-latest
 
     env:
 
-      ############################################################
-      # Stack
-      ############################################################
-
       TF_WORKING_DIR: ${{ inputs.cloud-provider == 'aws' && 'terraform/stacks/aws/app-platform' || 'terraform/stacks/azure/app-platform' }}
-
-      ############################################################
-      # Terraform Variables
-      ############################################################
 
       TF_VAR_name_prefix: ${{ vars.NAME_PREFIX }}
       TF_VAR_instance_type: ${{ vars.TF_VAR_INSTANCE_TYPE }}
       TF_VAR_repository_name: ${{ vars.TF_VAR_REPOSITORY_NAME }}
       TF_VAR_aws_region: ${{ vars.TF_VAR_AWS_REGION }}
-
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_subnet_cidr: ${{ vars.SUBNET_CIDR }}
 
@@ -67,7 +47,6 @@ jobs:
         }
 
     outputs:
-
       public_ip: ${{ steps.outputs.outputs.public_ip }}
       instance_id: ${{ steps.outputs.outputs.instance_id }}
       registry_url: ${{ steps.outputs.outputs.registry_url }}
@@ -77,9 +56,7 @@ jobs:
       runtime_bucket_arn: ${{ steps.outputs.outputs.runtime_bucket_arn }}
 
     defaults:
-
       run:
-
         working-directory: ${{ env.TF_WORKING_DIR }}
 
     steps:
@@ -109,22 +86,16 @@ jobs:
           creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       ############################################################
+      # Terraform
+      ############################################################
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.12.2
 
+
           
-
-      - name: Show State
-        run: |
-          terraform state pull
-
-
-      ############################################################
-      # Terraform Init
-      ############################################################
 
       - name: Terraform Init
         run: |
@@ -136,9 +107,29 @@ jobs:
             -backend-config="region=${{ secrets.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ vars.TF_BACKEND_LOCK_TABLE }}"
 
+
+
+
+
+      - name: Download State
+        run: |
+          terraform state pull > state.json
+
+      - name: Print Resources
+        run: |
+          cat state.json | jq '.resources[].type'
+
+
+
       ############################################################
-      # Debug AWS Resources
+      # DEBUG
       ############################################################
+
+      - name: Show Remote State
+        run: terraform state pull
+
+      - name: Show Terraform State
+        run: terraform state list
 
       - name: Show Existing AWS Resources
         if: inputs.cloud-provider == 'aws'
@@ -157,44 +148,31 @@ jobs:
           aws iam list-roles --output json
 
           echo "========== S3 =========="
-          aws s3api list-buckets --output json       
-          
-      ############################################################
-      # Debug State
-      ############################################################
-
-      - name: Show Terraform State
-        run: terraform state list
+          aws s3api list-buckets --output json
 
       ############################################################
-      # Apply
+      # APPLY
       ############################################################
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
 
       ############################################################
-      # Outputs
+      # OUTPUTS
       ############################################################
 
       - id: outputs
         shell: bash
         run: |
-
           set -Eeuo pipefail
 
           json=$(terraform output -json)
 
           emit () {
-
             local key="$1"
-
             local value
-
             value=$(echo "$json" | jq -r ".${key}.value // empty")
-
             echo "${key}=${value}" >> "$GITHUB_OUTPUT"
-
           }
 
           emit public_ip
