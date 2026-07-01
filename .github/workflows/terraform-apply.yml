@@ -128,8 +128,6 @@ jobs:
       - name: Show Remote State
         run: terraform state pull
 
-      - name: Show Terraform State
-        run: terraform state list
 
       - name: Show Existing AWS Resources
         if: inputs.cloud-provider == 'aws'

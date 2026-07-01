@@ -73,9 +73,7 @@ jobs:
       - name: Show Remote State
         run: terraform state pull
 
-      - name: Show Terraform State
-        run: terraform state list
-
+  
       - name: Terraform Format
         run: terraform fmt -check -diff -recursive
 
