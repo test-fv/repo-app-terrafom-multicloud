@@ -30,51 +30,30 @@ concurrency:
 
 jobs:
 
+  ############################################################
+  # Terraform Plan
+  ############################################################
+
   plan:
 
     uses: ./.github/workflows/terraform-plan.yml
 
     with:
       cloud-provider: ${{ github.event.inputs.cloud }}
-      working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
 
     secrets: inherit
+
+  ############################################################
+  # Terraform Apply
+  ############################################################
 
   apply:
 
     needs: plan
 
-    runs-on: ubuntu-latest
+    uses: ./.github/workflows/terraform-apply.yml
 
-    steps:
+    with:
+      cloud-provider: ${{ github.event.inputs.cloud }}
 
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure AWS Credentials
-        if: github.event.inputs.cloud == 'aws'
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-
-      - name: Terraform Init
-        working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
-        run: terraform init -reconfigure -input=false
-
-      - name: Force Unlock State (optional)
-        if: ${{ github.event.inputs.force_unlock == true }}
-        working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
-        run: |
-          terraform force-unlock -force cfe8ea1c-f38b-800a-c34f-757040819a56 || true
-
-      - name: Terraform Apply
-        working-directory: terraform/environments/${{ github.event.inputs.cloud }}/${{ github.event.inputs.environment }}
-        run: |
-          terraform apply \
-            -auto-approve \
-            -input=false \
+    secrets: inherit
