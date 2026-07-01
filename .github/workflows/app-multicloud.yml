@@ -1,19 +1,12 @@
 name: Enterprise MultiCloud Deployment
 
 on:
-
   workflow_dispatch:
-
     inputs:
-
       cloud-provider:
-
         description: Cloud Provider
-
         required: true
-
         type: choice
-
         options:
           - aws
           - azure
@@ -25,13 +18,9 @@ jobs:
   ############################################################
 
   terraform-plan:
-
     uses: ./.github/workflows/terraform-plan.yml
-
     with:
-
       cloud-provider: ${{ inputs.cloud-provider }}
-
     secrets: inherit
 
   ############################################################
@@ -39,15 +28,10 @@ jobs:
   ############################################################
 
   terraform-apply:
-
     needs: terraform-plan
-
     uses: ./.github/workflows/terraform-apply.yml
-
     with:
-
       cloud-provider: ${{ inputs.cloud-provider }}
-
     secrets: inherit
 
   ############################################################
@@ -55,17 +39,11 @@ jobs:
   ############################################################
 
   publish-runtime:
-
     needs: terraform-apply
-
     uses: ./.github/workflows/publish-runtime.yml
-
     with:
-
       cloud-provider: ${{ inputs.cloud-provider }}
-
       runtime-bucket: ${{ needs.terraform-apply.outputs.runtime_bucket_name }}
-
     secrets: inherit
 
   ############################################################
@@ -73,19 +51,12 @@ jobs:
   ############################################################
 
   build-image:
-
     needs: terraform-apply
-
     uses: ./.github/workflows/build-image.yml
-
     with:
-
       cloud-provider: ${{ inputs.cloud-provider }}
-
       registry-server: ${{ needs.terraform-apply.outputs.registry_server }}
-
       repository-name: ${{ needs.terraform-apply.outputs.repository_name }}
-
     secrets: inherit
 
   ############################################################
@@ -93,9 +64,7 @@ jobs:
   ############################################################
 
   deploy:
-
     needs:
-
       - terraform-apply
       - publish-runtime
       - build-image
@@ -103,17 +72,11 @@ jobs:
     uses: ./.github/workflows/deploy-ssm.yml
 
     with:
-
       cloud-provider: ${{ inputs.cloud-provider }}
-
       instance-id: ${{ needs.terraform-apply.outputs.instance_id }}
-
       runtime-bucket: ${{ needs.terraform-apply.outputs.runtime_bucket_name }}
-
       registry-server: ${{ needs.terraform-apply.outputs.registry_server }}
-
       repository-name: ${{ needs.terraform-apply.outputs.repository_name }}
-
       image-tag: ${{ needs.build-image.outputs.image-tag }}
 
     secrets: inherit

@@ -9,10 +9,6 @@ on:
         required: true
         type: string
 
-      working-directory:
-        required: true
-        type: string
-
 jobs:
 
   plan:
@@ -20,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
+
+      TF_WORKING_DIR: ${{ inputs.cloud-provider == 'aws' && 'terraform/stacks/aws/app-platform' || 'terraform/stacks/azure/app-platform' }}
 
       TF_VAR_name_prefix: ${{ vars.NAME_PREFIX }}
       TF_VAR_instance_type: ${{ vars.TF_VAR_INSTANCE_TYPE }}
@@ -38,31 +36,15 @@ jobs:
     defaults:
 
       run:
-        working-directory: ${{ inputs.working-directory }}
+        working-directory: ${{ env.TF_WORKING_DIR }}
 
     steps:
 
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
+      - uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.12.2
-
-      ############################################################
-      # Azure
-      ############################################################
-
-      - name: Azure Login
-        if: inputs.cloud-provider == 'azure'
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
-      ############################################################
-      # AWS
-      ############################################################
 
       - name: Configure AWS Credentials
         if: inputs.cloud-provider == 'aws'
@@ -72,9 +54,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      ############################################################
-      # Terraform Init
-      ############################################################
+      - name: Azure Login
+        if: inputs.cloud-provider == 'azure'
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
 
       - name: Terraform Init
         run: |
@@ -86,19 +70,11 @@ jobs:
             -backend-config="region=${{ secrets.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ vars.TF_BACKEND_LOCK_TABLE }}"
 
-      ############################################################
-      # Debug State
-      ############################################################
-
       - name: Show Remote State
         run: terraform state pull
 
       - name: Show Terraform State
         run: terraform state list
-
-      ############################################################
-      # Terraform Checks
-      ############################################################
 
       - name: Terraform Format
         run: terraform fmt -check -diff -recursive
@@ -106,12 +82,5 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
-      ############################################################
-      # Terraform Plan
-      ############################################################
-
       - name: Terraform Plan
-        run: |
-          terraform plan \
-            -input=false \
-            -no-color
+        run: terraform plan -input=false -no-color
