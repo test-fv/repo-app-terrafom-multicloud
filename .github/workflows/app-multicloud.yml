@@ -34,6 +34,26 @@ jobs:
       cloud-provider: ${{ inputs.cloud-provider }}
     secrets: inherit
 
+
+
+  debug-outputs:
+
+    needs: terraform-apply
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Print Outputs
+        run: |
+          echo "runtime_bucket_name = '${{ needs.terraform-apply.outputs.runtime_bucket_name }}'"
+          echo "runtime_bucket_arn  = '${{ needs.terraform-apply.outputs.runtime_bucket_arn }}'"
+          echo "registry_server     = '${{ needs.terraform-apply.outputs.registry_server }}'"
+
+
+
+
+
   ############################################################
   # Publish Runtime
   ############################################################
