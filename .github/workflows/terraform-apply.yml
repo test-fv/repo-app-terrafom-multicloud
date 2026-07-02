@@ -155,6 +155,17 @@ jobs:
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false
 
+
+
+      - name: Debug Terraform Outputs
+        shell: bash
+        run: |
+          terraform output
+          echo "----------------------------"
+          terraform output -json        
+
+
+
       ############################################################
       # OUTPUTS
       ############################################################
