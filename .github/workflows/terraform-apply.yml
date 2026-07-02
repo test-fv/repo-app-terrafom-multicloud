@@ -191,3 +191,11 @@ jobs:
           emit repository_name
           emit runtime_bucket_name
           emit runtime_bucket_arn
+
+
+      - name: Debug GitHub Outputs
+        shell: bash
+        run: |
+          echo "runtime_bucket_name = ${{ steps.outputs.outputs.runtime_bucket_name }}"
+          echo "runtime_bucket_arn  = ${{ steps.outputs.outputs.runtime_bucket_arn }}"
+          echo "registry_server     = ${{ steps.outputs.outputs.registry_server }}"
