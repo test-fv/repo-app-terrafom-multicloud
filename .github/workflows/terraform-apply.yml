@@ -196,3 +196,12 @@ jobs:
           echo "runtime_bucket_name = '${{ steps.tf.outputs.runtime_bucket_name }}'"
           echo "runtime_bucket_arn  = '${{ steps.tf.outputs.runtime_bucket_arn }}'"
           echo "registry_server     = '${{ steps.tf.outputs.registry_server }}'"
+
+
+      - name: Verify Step Outputs
+        if: always()
+        run: |
+          echo "PUBLIC_IP=${{ steps.tf.outputs.public_ip }}"
+          echo "INSTANCE_ID=${{ steps.tf.outputs.instance_id }}"
+          echo "BUCKET=${{ steps.tf.outputs.runtime_bucket_name }}"
+          echo "REGISTRY=${{ steps.tf.outputs.registry_server }}"          
