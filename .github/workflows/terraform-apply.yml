@@ -1,6 +1,7 @@
 name: Terraform Apply
 
 on:
+
   workflow_call:
 
     inputs:
@@ -8,29 +9,6 @@ on:
       cloud-provider:
         required: true
         type: string
-
-    outputs:
-
-      public_ip:
-        value: ${{ jobs.apply.outputs.public_ip }}
-
-      instance_id:
-        value: ${{ jobs.apply.outputs.instance_id }}
-
-      registry_url:
-        value: ${{ jobs.apply.outputs.registry_url }}
-
-      registry_server:
-        value: ${{ jobs.apply.outputs.registry_server }}
-
-      repository_name:
-        value: ${{ jobs.apply.outputs.repository_name }}
-
-      runtime_bucket_name:
-        value: ${{ jobs.apply.outputs.runtime_bucket_name }}
-
-      runtime_bucket_arn:
-        value: ${{ jobs.apply.outputs.runtime_bucket_arn }}
 
 jobs:
 
@@ -46,7 +24,6 @@ jobs:
       TF_VAR_instance_type: ${{ vars.TF_VAR_INSTANCE_TYPE }}
       TF_VAR_repository_name: ${{ vars.TF_VAR_REPOSITORY_NAME }}
       TF_VAR_aws_region: ${{ vars.TF_VAR_AWS_REGION }}
-
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_subnet_cidr: ${{ vars.SUBNET_CIDR }}
 
@@ -57,24 +34,20 @@ jobs:
           "ManagedBy":"Terraform"
         }
 
-    outputs:
-
-      public_ip: ${{ steps.tf.outputs.public_ip }}
-      instance_id: ${{ steps.tf.outputs.instance_id }}
-      registry_url: ${{ steps.tf.outputs.registry_url }}
-      registry_server: ${{ steps.tf.outputs.registry_server }}
-      repository_name: ${{ steps.tf.outputs.repository_name }}
-      runtime_bucket_name: ${{ steps.tf.outputs.runtime_bucket_name }}
-      runtime_bucket_arn: ${{ steps.tf.outputs.runtime_bucket_arn }}
-
     defaults:
 
       run:
+
         working-directory: ${{ env.TF_WORKING_DIR }}
 
     steps:
 
-      - uses: actions/checkout@v4
+      ############################################################
+      # Checkout
+      ############################################################
+
+      - name: Checkout
+        uses: actions/checkout@v4
 
       ############################################################
       # AWS
@@ -108,6 +81,7 @@ jobs:
           terraform_version: 1.12.2
 
       - name: Terraform Init
+        shell: bash
         run: |
           terraform init \
             -reconfigure \
@@ -117,91 +91,92 @@ jobs:
             -backend-config="region=${{ secrets.AWS_REGION }}" \
             -backend-config="dynamodb_table=${{ vars.TF_BACKEND_LOCK_TABLE }}"
 
-      - name: Download State
-        run: terraform state pull > state.json
-
-      - name: Print Resources
-        run: |
-          cat state.json | jq '.resources[].type'
-
       ############################################################
-      # DEBUG
+      # Validate State
       ############################################################
 
-      - name: Show Remote State
-        run: terraform state pull
-
-      - name: Show Existing AWS Resources
-        if: inputs.cloud-provider == 'aws'
+      - name: Validate Terraform State
         shell: bash
         run: |
-          echo "========== VPCS =========="
-          aws ec2 describe-vpcs --output json
+          terraform state list || true
 
-          echo "========== EC2 =========="
-          aws ec2 describe-instances --output json
+      ############################################################
+      # Validate Configuration
+      ############################################################
 
-          echo "========== ECR =========="
-          aws ecr describe-repositories --output json
-
-          echo "========== IAM ROLES =========="
-          aws iam list-roles --output json
-
-          echo "========== S3 =========="
-          aws s3api list-buckets --output json
-
+      - name: Terraform Validate
+        shell: bash
+        run: terraform validate
       ############################################################
       # APPLY
       ############################################################
 
       - name: Terraform Apply
-        run: terraform apply -auto-approve -input=false
-
-      ############################################################
-      # DEBUG OUTPUTS
-      ############################################################
-
-      - name: Debug Terraform Outputs
-        shell: bash
-        run: |
-          terraform output
-          echo "----------------------------"
-          terraform output -json
-
-      ############################################################
-      # CAPTURE OUTPUTS
-      ############################################################
-
-      - name: Capture Terraform Outputs
-        id: tf
         shell: bash
         run: |
           set -Eeuo pipefail
 
-          echo "public_ip=$(terraform output -raw public_ip)" >> $GITHUB_OUTPUT
-          echo "instance_id=$(terraform output -raw instance_id)" >> $GITHUB_OUTPUT
-          echo "registry_url=$(terraform output -raw registry_url)" >> $GITHUB_OUTPUT
-          echo "registry_server=$(terraform output -raw registry_server)" >> $GITHUB_OUTPUT
-          echo "repository_name=$(terraform output -raw repository_name)" >> $GITHUB_OUTPUT
-          echo "runtime_bucket_name=$(terraform output -raw runtime_bucket_name)" >> $GITHUB_OUTPUT
-          echo "runtime_bucket_arn=$(terraform output -raw runtime_bucket_arn)" >> $GITHUB_OUTPUT
+          terraform apply \
+            -auto-approve \
+            -input=false
 
       ############################################################
-      # DEBUG GITHUB OUTPUTS
+      # EXPORT OUTPUTS
       ############################################################
 
-      - name: Debug GitHub Outputs
+      - name: Export Terraform Outputs
         shell: bash
         run: |
-          echo "runtime_bucket_name = '${{ steps.tf.outputs.runtime_bucket_name }}'"
-          echo "runtime_bucket_arn  = '${{ steps.tf.outputs.runtime_bucket_arn }}'"
-          echo "registry_server     = '${{ steps.tf.outputs.registry_server }}'"
+          set -Eeuo pipefail
 
+          terraform output -json > outputs.json
 
-      - name: Verify Step Outputs
-        if: always()
+      ############################################################
+      # VERIFY OUTPUTS
+      ############################################################
+
+      - name: Verify Outputs
+        shell: bash
         run: |
-          echo "PUBLIC_IP=${{ steps.tf.outputs.public_ip }}"
-          echo "INSTANCE_ID=${{ steps.tf.outputs.instance_id }}"
-          echo "BUCKET=${{ steps.tf.outputs.runtime_bucket_name }}"
-          echo "REGISTRY=${{ steps.tf.outputs.registry_server }}"          
+          set -Eeuo pipefail
+
+          echo "========== Terraform Outputs =========="
+
+          cat outputs.json | jq .
+
+          echo "======================================="
+
+          test "$(jq -r '.instance_id.value' outputs.json)" != "null"
+          test "$(jq -r '.registry_server.value' outputs.json)" != "null"
+          test "$(jq -r '.repository_name.value' outputs.json)" != "null"
+          test "$(jq -r '.runtime_bucket_name.value' outputs.json)" != "null"
+
+      ############################################################
+      # PUBLISH CONTRACT
+      ############################################################
+
+      - name: Upload Terraform Outputs
+        uses: actions/upload-artifact@v4
+
+        with:
+
+          name: terraform-outputs
+
+          path: ${{ env.TF_WORKING_DIR }}/outputs.json
+
+          retention-days: 1
+
+      ############################################################
+      # SUMMARY
+      ############################################################
+
+      - name: Deployment Summary
+        shell: bash
+        run: |
+          echo "======================================="
+          echo "Terraform Apply Completed"
+          echo "======================================="
+          echo "Cloud Provider : ${{ inputs.cloud-provider }}"
+          echo "Working Dir    : ${{ env.TF_WORKING_DIR }}"
+          echo "Artifact       : terraform-outputs"
+          echo "======================================="

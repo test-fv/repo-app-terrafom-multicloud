@@ -5,13 +5,6 @@
 #
 # Enterprise Runtime
 #
-# Responsibilities:
-#
-#   - Login to Amazon ECR
-#   - Generate .env
-#   - Pull latest image
-#   - Deploy using Docker Compose
-#
 ##############################################################################
 
 set -Eeuo pipefail
@@ -51,6 +44,18 @@ log() {
 }
 
 ##############################################################################
+# Validate Runtime
+##############################################################################
+
+[[ -f "${COMPOSE_FILE}" ]] || {
+
+    echo "compose.yaml not found."
+
+    exit 1
+
+}
+
+##############################################################################
 # Validate Dependencies
 ##############################################################################
 
@@ -62,6 +67,18 @@ command -v aws >/dev/null \
 
 docker compose version >/dev/null \
     || { echo "Docker Compose V2 is not installed."; exit 1; }
+
+##############################################################################
+# Ensure Docker
+##############################################################################
+
+if ! systemctl is-active --quiet docker; then
+
+    log "Starting Docker"
+
+    sudo systemctl start docker
+
+fi
 
 ##############################################################################
 # Login to Amazon ECR
@@ -88,15 +105,27 @@ IMAGE_TAG=${IMAGE_TAG}
 EOF
 
 ##############################################################################
-# Pull Latest Image
+# Pull Images
 ##############################################################################
 
-log "Pulling latest image"
+log "Pulling latest images"
 
 docker compose \
     --env-file "${ENV_FILE}" \
     -f "${COMPOSE_FILE}" \
     pull
+
+##############################################################################
+# Stop Previous Containers
+##############################################################################
+
+log "Stopping previous containers"
+
+docker compose \
+    --env-file "${ENV_FILE}" \
+    -f "${COMPOSE_FILE}" \
+    down \
+    --remove-orphans || true
 
 ##############################################################################
 # Deploy
@@ -107,14 +136,24 @@ log "Deploying application"
 docker compose \
     --env-file "${ENV_FILE}" \
     -f "${COMPOSE_FILE}" \
-    up -d \
-    --remove-orphans
+    up -d
+
+##############################################################################
+# Show Status
+##############################################################################
+
+log "Running containers"
+
+docker compose \
+    --env-file "${ENV_FILE}" \
+    -f "${COMPOSE_FILE}" \
+    ps
 
 ##############################################################################
 # Cleanup
 ##############################################################################
 
-log "Cleaning unused images"
+log "Cleaning Docker"
 
 docker image prune -af || true
 

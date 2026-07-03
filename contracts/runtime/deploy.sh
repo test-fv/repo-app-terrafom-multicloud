@@ -1,22 +1,17 @@
 #!/usr/bin/env bash
 
 ##############################################################################
+#
 # Enterprise Runtime Launcher
 #
-# This script is the only entry point executed by AWS Systems Manager.
-#
-# It must remain completely independent from:
-#
-#   - Git
-#   - SSH
-#   - Repository layout
+# Entry point executed by deploy-remote.sh
 #
 ##############################################################################
 
 set -Eeuo pipefail
 
 ##############################################################################
-# Locate Runtime
+# Runtime Layout
 ##############################################################################
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,17 +20,7 @@ RUNTIME_ROOT="${SCRIPT_DIR}"
 
 PROVIDERS_DIR="${RUNTIME_ROOT}/providers"
 
-##############################################################################
-# Validate Environment
-##############################################################################
-
-: "${CLOUD_PROVIDER:?CLOUD_PROVIDER not defined}"
-
-: "${REGISTRY_SERVER:?REGISTRY_SERVER not defined}"
-
-: "${REPOSITORY_NAME:?REPOSITORY_NAME not defined}"
-
-: "${IMAGE_TAG:=latest}"
+COMPOSE_FILE="${RUNTIME_ROOT}/compose.yaml"
 
 ##############################################################################
 # Logging
@@ -52,6 +37,40 @@ log() {
     echo "=================================================="
 
 }
+
+##############################################################################
+# Validate Environment
+##############################################################################
+
+: "${CLOUD_PROVIDER:?CLOUD_PROVIDER not defined}"
+
+: "${REGISTRY_SERVER:?REGISTRY_SERVER not defined}"
+
+: "${REPOSITORY_NAME:?REPOSITORY_NAME not defined}"
+
+: "${IMAGE_TAG:=latest}"
+
+##############################################################################
+# Validate Runtime
+##############################################################################
+
+log "Validating runtime..."
+
+[[ -f "${COMPOSE_FILE}" ]] || {
+
+    echo "compose.yaml not found."
+
+    exit 1
+
+}
+
+success() {
+
+    echo "[SUCCESS] $1"
+
+}
+
+success "Runtime validated."
 
 ##############################################################################
 # Select Provider
@@ -85,15 +104,15 @@ esac
 # Validate Provider
 ##############################################################################
 
-if [[ ! -f "${PROVIDER_SCRIPT}" ]]; then
+[[ -f "${PROVIDER_SCRIPT}" ]] || {
 
-    echo "Provider script not found"
+    echo "Provider script not found."
 
     echo "${PROVIDER_SCRIPT}"
 
     exit 1
 
-fi
+}
 
 chmod +x "${PROVIDER_SCRIPT}"
 
@@ -107,10 +126,28 @@ export REPOSITORY_NAME
 
 export IMAGE_TAG
 
+export COMPOSE_FILE
+
+##############################################################################
+# Summary
+##############################################################################
+
+log "Deployment Configuration"
+
+echo "Cloud Provider : ${CLOUD_PROVIDER}"
+
+echo "Registry       : ${REGISTRY_SERVER}"
+
+echo "Repository     : ${REPOSITORY_NAME}"
+
+echo "Image Tag      : ${IMAGE_TAG}"
+
+echo "Provider       : ${PROVIDER_SCRIPT}"
+
 ##############################################################################
 # Execute Provider
 ##############################################################################
 
-log "Executing ${CLOUD_PROVIDER} deployment..."
+log "Executing provider..."
 
 exec "${PROVIDER_SCRIPT}"

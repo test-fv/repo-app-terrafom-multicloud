@@ -10,10 +10,6 @@ on:
         required: true
         type: string
 
-      runtime-bucket:
-        required: true
-        type: string
-
     secrets:
 
       AWS_ACCESS_KEY_ID:
@@ -38,8 +34,33 @@ jobs:
       ############################################################
 
       - name: Checkout
-
         uses: actions/checkout@v4
+
+      ############################################################
+      # Download Terraform Outputs
+      ############################################################
+
+      - name: Download Terraform Outputs
+        uses: actions/download-artifact@v4
+
+        with:
+          name: terraform-outputs
+
+      ############################################################
+      # Read Terraform Outputs
+      ############################################################
+
+      - name: Read Terraform Outputs
+
+        id: tf
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          echo "runtime_bucket_name=$(jq -r '.runtime_bucket_name.value' outputs.json)" >> "$GITHUB_OUTPUT"
 
       ############################################################
       # Configure AWS
@@ -102,33 +123,19 @@ jobs:
           ##########################################################
 
           test -f contracts/runtime/deploy.sh
-
           test -f contracts/runtime/compose.yaml
-
-          test -f contracts/runtime/providers/aws.sh
+          test -f contracts/runtime/aws.sh
 
           ##########################################################
           # Runtime
           ##########################################################
 
-          cp \
-            contracts/runtime/deploy.sh \
-            artifact/runtime/
+          cp contracts/runtime/deploy.sh artifact/runtime/
+          cp contracts/runtime/compose.yaml artifact/runtime/
+          cp contracts/runtime/aws.sh artifact/runtime/providers/
 
-          cp \
-            contracts/runtime/compose.yaml \
-            artifact/runtime/
-
-          cp \
-            contracts/runtime/providers/aws.sh \
-            artifact/runtime/providers/
-
-          if [[ -f contracts/runtime/providers/azure.sh ]]; then
-
-            cp \
-              contracts/runtime/providers/azure.sh \
-              artifact/runtime/providers/
-
+          if [[ -f contracts/runtime/azure.sh ]]; then
+            cp contracts/runtime/azure.sh artifact/runtime/providers/
           fi
 
           ##########################################################
@@ -158,11 +165,11 @@ jobs:
 
           aws s3 cp \
             deployment-artifact.tar.gz \
-            s3://${{ inputs.runtime-bucket }}/artifacts/${{ steps.version.outputs.version }}.tar.gz
+            s3://${{ steps.tf.outputs.runtime_bucket_name }}/artifacts/${{ steps.version.outputs.version }}.tar.gz
 
           aws s3 cp \
             deployment-artifact.tar.gz.sha256 \
-            s3://${{ inputs.runtime-bucket }}/artifacts/${{ steps.version.outputs.version }}.tar.gz.sha256
+            s3://${{ steps.tf.outputs.runtime_bucket_name }}/artifacts/${{ steps.version.outputs.version }}.tar.gz.sha256
 
       ############################################################
       # Upload Latest
@@ -178,11 +185,11 @@ jobs:
 
           aws s3 cp \
             deployment-artifact.tar.gz \
-            s3://${{ inputs.runtime-bucket }}/artifacts/latest.tar.gz
+            s3://${{ steps.tf.outputs.runtime_bucket_name }}/artifacts/latest.tar.gz
 
           aws s3 cp \
             deployment-artifact.tar.gz.sha256 \
-            s3://${{ inputs.runtime-bucket }}/artifacts/latest.tar.gz.sha256
+            s3://${{ steps.tf.outputs.runtime_bucket_name }}/artifacts/latest.tar.gz.sha256
 
       ############################################################
       # Summary
@@ -195,15 +202,9 @@ jobs:
         run: |
 
           echo "======================================"
-
           echo "Runtime Published"
-
           echo "======================================"
-
-          echo "Bucket : ${{ inputs.runtime-bucket }}"
-
-          echo "Version: ${{ steps.version.outputs.version }}"
-
-          echo "Artifact: deployment-artifact.tar.gz"
-
+          echo "Bucket    : ${{ steps.tf.outputs.runtime_bucket_name }}"
+          echo "Version   : ${{ steps.version.outputs.version }}"
+          echo "Artifact  : deployment-artifact.tar.gz"
           echo "======================================"

@@ -10,14 +10,6 @@ on:
         required: true
         type: string
 
-      registry-server:
-        required: true
-        type: string
-
-      repository-name:
-        required: true
-        type: string
-
     secrets:
 
       AWS_ACCESS_KEY_ID:
@@ -55,8 +47,36 @@ jobs:
       #######################################################
 
       - name: Checkout
-
         uses: actions/checkout@v4
+
+      #######################################################
+      # Download Terraform Outputs
+      #######################################################
+
+      - name: Download Terraform Outputs
+        uses: actions/download-artifact@v4
+
+        with:
+
+          name: terraform-outputs
+
+      #######################################################
+      # Read Terraform Outputs
+      #######################################################
+
+      - name: Read Terraform Outputs
+
+        id: tf
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          echo "registry_server=$(jq -r '.registry_server.value' outputs.json)" >> "$GITHUB_OUTPUT"
+
+          echo "repository_name=$(jq -r '.repository_name.value' outputs.json)" >> "$GITHUB_OUTPUT"
 
       #######################################################
       # Generate Version
@@ -109,7 +129,7 @@ jobs:
           | docker login \
               --username AWS \
               --password-stdin \
-              "${{ inputs.registry-server }}"
+              "${{ steps.tf.outputs.registry_server }}"
 
       #######################################################
       # Azure
@@ -134,7 +154,7 @@ jobs:
         run: |
 
           az acr login \
-            --name $(echo "${{ inputs.registry-server }}" | cut -d'.' -f1)
+            --name $(echo "${{ steps.tf.outputs.registry_server }}" | cut -d'.' -f1)
 
       #######################################################
       # Build
@@ -150,9 +170,9 @@ jobs:
 
           VERSION="${{ steps.version.outputs.version }}"
 
-          IMAGE_VERSION="${{ inputs.registry-server }}/${{ inputs.repository-name }}:${VERSION}"
+          IMAGE_VERSION="${{ steps.tf.outputs.registry_server }}/${{ steps.tf.outputs.repository_name }}:${VERSION}"
 
-          IMAGE_LATEST="${{ inputs.registry-server }}/${{ inputs.repository-name }}:latest"
+          IMAGE_LATEST="${{ steps.tf.outputs.registry_server }}/${{ steps.tf.outputs.repository_name }}:latest"
 
           echo "Building ${IMAGE_VERSION}"
 
@@ -175,9 +195,9 @@ jobs:
 
           VERSION="${{ steps.version.outputs.version }}"
 
-          IMAGE_VERSION="${{ inputs.registry-server }}/${{ inputs.repository-name }}:${VERSION}"
+          IMAGE_VERSION="${{ steps.tf.outputs.registry_server }}/${{ steps.tf.outputs.repository_name }}:${VERSION}"
 
-          IMAGE_LATEST="${{ inputs.registry-server }}/${{ inputs.repository-name }}:latest"
+          IMAGE_LATEST="${{ steps.tf.outputs.registry_server }}/${{ steps.tf.outputs.repository_name }}:latest"
 
           echo "Pushing ${IMAGE_VERSION}"
 
@@ -203,10 +223,12 @@ jobs:
 
           echo "======================================"
 
-          echo "Image : ${{ inputs.repository-name }}"
+          echo "Registry : ${{ steps.tf.outputs.registry_server }}"
 
-          echo "Tag   : ${{ steps.version.outputs.version }}"
+          echo "Repository : ${{ steps.tf.outputs.repository_name }}"
 
-          echo "Latest: latest"
+          echo "Tag : ${{ steps.version.outputs.version }}"
+
+          echo "Latest : latest"
 
           echo "======================================"
