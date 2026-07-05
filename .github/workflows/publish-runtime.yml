@@ -125,6 +125,7 @@ jobs:
           test -f contracts/runtime/deploy.sh
           test -f contracts/runtime/compose.yaml
           test -f contracts/runtime/aws.sh
+          test -f contracts/bootstrap/deploy-remote.sh
 
           ##########################################################
           # Runtime
@@ -171,6 +172,10 @@ jobs:
             deployment-artifact.tar.gz.sha256 \
             s3://${{ steps.tf.outputs.runtime_bucket_name }}/artifacts/${{ steps.version.outputs.version }}.tar.gz.sha256
 
+          aws s3 cp \
+            contracts/bootstrap/deploy-remote.sh \
+            s3://${{ steps.tf.outputs.runtime_bucket_name }}/bootstrap/${{ steps.version.outputs.version }}.sh  
+
       ############################################################
       # Upload Latest
       ############################################################
@@ -190,6 +195,10 @@ jobs:
           aws s3 cp \
             deployment-artifact.tar.gz.sha256 \
             s3://${{ steps.tf.outputs.runtime_bucket_name }}/artifacts/latest.tar.gz.sha256
+
+          aws s3 cp \
+            contracts/bootstrap/deploy-remote.sh \
+            s3://${{ steps.tf.outputs.runtime_bucket_name }}/bootstrap/latest.sh  
 
       ############################################################
       # Summary

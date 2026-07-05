@@ -14,7 +14,6 @@
 #   - Download deployment artifact
 #   - Verify SHA256 checksum
 #   - Extract runtime
-#   - Generate runtime environment
 #   - Authenticate against registry
 #   - Execute runtime deploy.sh
 #   - Cleanup temporary files
@@ -22,6 +21,23 @@
 ##############################################################################
 
 set -Eeuo pipefail
+
+##############################################################################
+# Load Runtime Environment
+##############################################################################
+
+if [[ -f /tmp/runtime.env ]]; then
+
+    set -a
+    source /tmp/runtime.env
+    set +a
+
+else
+
+    echo "runtime.env not found."
+    exit 1
+
+fi
 
 ##############################################################################
 # Global Configuration
@@ -272,21 +288,7 @@ log "Runtime contents:"
 
 find "${RUNTIME_HOME}" -maxdepth 2 -type f
 
-##############################################################################
-# Generate Runtime Environment
-##############################################################################
 
-log "Generating runtime.env..."
-
-cat > "${RUNTIME_ENV}" <<EOF
-CLOUD_PROVIDER=${CLOUD_PROVIDER}
-AWS_REGION=${AWS_REGION}
-REGISTRY_SERVER=${REGISTRY_SERVER}
-REPOSITORY_NAME=${REPOSITORY_NAME}
-IMAGE_TAG=${IMAGE_TAG}
-EOF
-
-success "runtime.env generated."
 
 ##############################################################################
 # Verify Docker
@@ -432,7 +434,7 @@ rm -f "${ARTIFACT}"
 
 rm -f "${CHECKSUM}"
 
-rm -f "${RUNTIME_ENV}"
+
 
 success "Temporary files removed."
 
