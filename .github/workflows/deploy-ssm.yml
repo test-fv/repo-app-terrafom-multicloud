@@ -142,17 +142,19 @@ jobs:
           echo "======================================"
           echo "Command ID: ${COMMAND_ID}"
           echo "======================================"
+          echo "Esperando 20 segundos..."
 
-          aws ssm wait command-executed \
-            --command-id "${COMMAND_ID}" \
-            --instance-id "${{ steps.tf.outputs.instance_id }}"
+          sleep 20
 
           echo "======================================"
           echo "Execution Result"
           echo "======================================"
 
           aws ssm get-command-invocation \
-            echo "==============================="
+            --command-id "${COMMAND_ID}" \
+            --instance-id "${{ steps.tf.outputs.instance_id }}"
+
+          echo "==============================="
           echo "STDOUT"
           echo "==============================="
 
