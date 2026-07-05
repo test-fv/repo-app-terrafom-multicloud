@@ -105,6 +105,24 @@ IMAGE_TAG=${IMAGE_TAG}
 EOF
 
 ##############################################################################
+# Backup Current Image
+##############################################################################
+
+CURRENT_IMAGE=""
+
+if docker ps -a --format '{{.Names}}' | grep -q '^app$'; then
+
+    CURRENT_IMAGE=$(docker inspect \
+        --format='{{.Config.Image}}' \
+        app)
+
+    log "Current deployed image"
+
+    echo "${CURRENT_IMAGE}"
+
+fi
+
+##############################################################################
 # Pull Images
 ##############################################################################
 
