@@ -6,7 +6,7 @@ set -Eeuo pipefail
 # Constants
 #########################################
 
-readonly APP_HOME="/opt/app-runtime"
+readonly APP_HOME="/opt/runtime"
 
 echo "==================================="
 echo "Provisioning AWS Runtime"
@@ -64,9 +64,9 @@ cat >/usr/local/bin/deploy.sh <<'EOF'
 
 set -Eeuo pipefail
 
-export APP_HOME="/opt/app-runtime"
+export APP_HOME="/opt/runtime"
 
-exec /opt/app-runtime/deploy.sh
+exec /opt/runtime/deploy.sh
 EOF
 
 chmod +x /usr/local/bin/deploy.sh
