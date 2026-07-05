@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -euo pipefail
+set -Eeuo pipefail
 
 #########################################
 # Constants
@@ -15,15 +15,21 @@ echo "==================================="
 export DEBIAN_FRONTEND=noninteractive
 
 #########################################
-# Packages
+# Update OS
 #########################################
 
 apt-get update -y
 
+#########################################
+# Install Packages
+#########################################
+
 apt-get install -y \
     docker.io \
+    docker-compose-v2 \
     curl \
     unzip \
+    jq \
     awscli
 
 #########################################
@@ -31,7 +37,11 @@ apt-get install -y \
 #########################################
 
 systemctl enable docker
-systemctl start docker
+systemctl restart docker
+
+#########################################
+# Add Ubuntu User
+#########################################
 
 if ! groups ubuntu | grep -q docker; then
     usermod -aG docker ubuntu
@@ -41,28 +51,45 @@ fi
 # Runtime folders
 #########################################
 
-mkdir -p "$${APP_HOME}"
+mkdir -p "${APP_HOME}"
+
 mkdir -p /usr/local/bin
 
 #########################################
-# Deploy Runtime
+# Runtime launcher
 #########################################
 
-cat > /usr/local/bin/deploy.sh <<'EOF'
+cat >/usr/local/bin/deploy.sh <<'EOF'
 #!/bin/bash
+
+set -Eeuo pipefail
 
 export APP_HOME="/opt/app-runtime"
 
-/opt/app-runtime/deploy.sh
+exec /opt/app-runtime/deploy.sh
 EOF
 
 chmod +x /usr/local/bin/deploy.sh
 
 #########################################
+# Validate Installation
+#########################################
+
+echo "==================================="
+echo "Installed versions"
+echo "==================================="
+
+docker --version
+
+docker compose version
+
+aws --version
+
+#########################################
 # Ownership
 #########################################
 
-chown -R ubuntu:ubuntu "$${APP_HOME}"
+chown -R ubuntu:ubuntu "${APP_HOME}"
 
 #########################################
 # Cleanup
@@ -70,6 +97,10 @@ chown -R ubuntu:ubuntu "$${APP_HOME}"
 
 apt-get clean
 
+#########################################
+# Finished
+#########################################
+
 echo "==================================="
-echo "Provisioning completed"
+echo "Provisioning completed successfully"
 echo "==================================="

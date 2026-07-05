@@ -15,6 +15,8 @@ resource "aws_instance" "vm" {
     }
   )
 
+  user_data_replace_on_change = true
+
   tags = merge(
     var.tags,
     {
