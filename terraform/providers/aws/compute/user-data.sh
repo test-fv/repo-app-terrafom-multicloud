@@ -30,7 +30,10 @@ apt-get install -y \
     curl \
     unzip \
     jq \
-    awscli
+    awscli \
+    amazon-cloudwatch-agent
+
+
 
 #########################################
 # Docker
@@ -38,6 +41,14 @@ apt-get install -y \
 
 systemctl enable docker
 systemctl restart docker
+
+
+#########################################
+# CloudWatch Agent
+#########################################
+
+systemctl enable amazon-cloudwatch-agent || true
+
 
 #########################################
 # Add Ubuntu User
