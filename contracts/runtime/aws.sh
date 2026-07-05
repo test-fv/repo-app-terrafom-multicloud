@@ -162,36 +162,45 @@ docker compose \
 
 log "Waiting application startup"
 
-sleep 20
-
-##############################################################################
-# Health Check
-##############################################################################
-
-log "Running Health Check"
-
 HEALTH_URL="http://localhost/health"
 
-HTTP_STATUS=$(
-    curl \
-        -s \
-        -o /dev/null \
-        -w "%{http_code}" \
-        "${HEALTH_URL}" \
-    || true
-)
+MAX_ATTEMPTS=24
+ATTEMPT=1
 
-echo "HTTP Status: ${HTTP_STATUS}"
+DEPLOY_FAILED=true
 
-if [[ "${HTTP_STATUS}" == "200" ]]; then
+while [[ ${ATTEMPT} -le ${MAX_ATTEMPTS} ]]; do
 
-    log "Health Check passed."
+    HTTP_STATUS=$(
+        curl \
+            -s \
+            -o /dev/null \
+            -w "%{http_code}" \
+            "${HEALTH_URL}" \
+        || true
+    )
 
-else
+    echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS} -> HTTP ${HTTP_STATUS}"
+
+    if [[ "${HTTP_STATUS}" == "200" ]]; then
+
+        DEPLOY_FAILED=false
+
+        log "Health Check passed."
+
+        break
+
+    fi
+
+    sleep 5
+
+    ((ATTEMPT++))
+
+done
+
+if [[ "${DEPLOY_FAILED}" == "true" ]]; then
 
     log "Health Check FAILED."
-
-    DEPLOY_FAILED=true
 
 fi
 
@@ -205,20 +214,30 @@ if [[ "${DEPLOY_FAILED:-false}" == "true" ]]; then
 
     if [[ -n "${CURRENT_IMAGE}" ]]; then
 
-        log "Rolling back previous version"
+log "Rolling back previous version"
 
-        PREVIOUS_TAG="${CURRENT_IMAGE##*:}"
+PREVIOUS_TAG="${CURRENT_IMAGE##*:}"
 
-        cat > "${ENV_FILE}" <<EOF
+cat > "${ENV_FILE}" <<EOF
 REGISTRY_SERVER=${REGISTRY_SERVER}
 REPOSITORY_NAME=${REPOSITORY_NAME}
 IMAGE_TAG=${PREVIOUS_TAG}
 EOF
 
-        docker compose \
-            --env-file "${ENV_FILE}" \
-            -f "${COMPOSE_FILE}" \
-            up -d
+log "Stopping failed deployment"
+
+docker compose \
+    --env-file "${ENV_FILE}" \
+    -f "${COMPOSE_FILE}" \
+    down \
+    --remove-orphans || true
+
+log "Restoring previous version"
+
+docker compose \
+    --env-file "${ENV_FILE}" \
+    -f "${COMPOSE_FILE}" \
+    up -d
 
         log "Rollback completed."
 
