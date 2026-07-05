@@ -91,7 +91,98 @@ jobs:
 
           aws-region: ${{ secrets.AWS_REGION }}
 
+        
+      ############################################################
+      # Wait Cloud Init
+      ############################################################
+
+      - name: Wait Cloud Init
+
+        shell: bash
+
+        run: |
+
+          set -Eeuo pipefail
+
+          echo "======================================"
+          echo "Waiting SSM Agent..."
+          echo "======================================"
+
+          while true
+          do
+
+            STATUS=$(
+              aws ssm describe-instance-information \
+                --filters Key=InstanceIds,Values=${{ steps.tf.outputs.instance_id }} \
+                --query "InstanceInformationList[0].PingStatus" \
+                --output text 2>/dev/null || true
+            )
+
+            echo "SSM Status: ${STATUS}"
+
+            if [ "${STATUS}" = "Online" ]; then
+              break
+            fi
+
+            sleep 5
+
+          done
+
+          echo "======================================"
+          echo "Waiting cloud-init..."
+          echo "======================================"
+
+          COMMAND_ID=$(
+            aws ssm send-command \
+              --instance-ids "${{ steps.tf.outputs.instance_id }}" \
+              --document-name "AWS-RunShellScript" \
+              --parameters 'commands=["cloud-init status --wait"]' \
+              --query "Command.CommandId" \
+              --output text
+          )
+
+          while true
+          do
+
+            STATUS=$(
+              aws ssm get-command-invocation \
+                --command-id "${COMMAND_ID}" \
+                --instance-id "${{ steps.tf.outputs.instance_id }}" \
+                --query Status \
+                --output text
+            )
+
+            echo "cloud-init: ${STATUS}"
+
+            case "${STATUS}" in
+
+              Pending|InProgress|Delayed)
+
+                sleep 5
+                ;;
+
+              Success)
+
+                echo "cloud-init finished."
+                break
+                ;;
+
+              *)
+
+                echo "cloud-init failed."
+
+                aws ssm get-command-invocation \
+                  --command-id "${COMMAND_ID}" \
+                  --instance-id "${{ steps.tf.outputs.instance_id }}"
+
+                exit 1
+                ;;
+
+            esac
+
+          done
           
+
       ############################################################
       # Execute Bootstrap Through SSM
       ############################################################
