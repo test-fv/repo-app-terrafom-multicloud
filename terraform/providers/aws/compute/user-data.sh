@@ -51,7 +51,7 @@ fi
 # Runtime folders
 #########################################
 
-mkdir -p "${APP_HOME}"
+mkdir -p "$${APP_HOME}"
 
 mkdir -p /usr/local/bin
 
@@ -89,7 +89,7 @@ aws --version
 # Ownership
 #########################################
 
-chown -R ubuntu:ubuntu "${APP_HOME}"
+chown -R ubuntu:ubuntu "$${APP_HOME}"
 
 #########################################
 # Cleanup
