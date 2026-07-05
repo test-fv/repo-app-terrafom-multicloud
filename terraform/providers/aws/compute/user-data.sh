@@ -51,6 +51,47 @@ systemctl enable amazon-cloudwatch-agent || true
 
 
 #########################################
+# CloudWatch Configuration
+#########################################
+
+mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
+
+cat >/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<EOF
+{
+  "logs": {
+    "logs_collected": {
+      "files": {
+        "collect_list": [
+
+          {
+            "file_path": "/var/log/syslog",
+            "log_group_name": "/enterprise/syslog",
+            "log_stream_name": "{instance_id}"
+          },
+
+          {
+            "file_path": "/var/log/cloud-init-output.log",
+            "log_group_name": "/enterprise/cloud-init",
+            "log_stream_name": "{instance_id}"
+          },
+
+          {
+            "file_path": "/var/lib/docker/containers/*/*.log",
+            "log_group_name": "/enterprise/docker",
+            "log_stream_name": "{instance_id}"
+          }
+
+        ]
+      }
+    }
+  }
+}
+EOF
+
+systemctl restart amazon-cloudwatch-agent || true
+
+
+#########################################
 # Add Ubuntu User
 #########################################
 
