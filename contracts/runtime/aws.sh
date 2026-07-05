@@ -157,6 +157,82 @@ docker compose \
     up -d
 
 ##############################################################################
+# Wait Application
+##############################################################################
+
+log "Waiting application startup"
+
+sleep 20
+
+##############################################################################
+# Health Check
+##############################################################################
+
+log "Running Health Check"
+
+HEALTH_URL="http://localhost/health"
+
+HTTP_STATUS=$(
+    curl \
+        -s \
+        -o /dev/null \
+        -w "%{http_code}" \
+        "${HEALTH_URL}" \
+    || true
+)
+
+echo "HTTP Status: ${HTTP_STATUS}"
+
+if [[ "${HTTP_STATUS}" == "200" ]]; then
+
+    log "Health Check passed."
+
+else
+
+    log "Health Check FAILED."
+
+    DEPLOY_FAILED=true
+
+fi
+
+##############################################################################
+# Rollback
+##############################################################################
+
+if [[ "${DEPLOY_FAILED:-false}" == "true" ]]; then
+
+    log "Deployment failed"
+
+    if [[ -n "${CURRENT_IMAGE}" ]]; then
+
+        log "Rolling back previous version"
+
+        PREVIOUS_TAG="${CURRENT_IMAGE##*:}"
+
+        cat > "${ENV_FILE}" <<EOF
+REGISTRY_SERVER=${REGISTRY_SERVER}
+REPOSITORY_NAME=${REPOSITORY_NAME}
+IMAGE_TAG=${PREVIOUS_TAG}
+EOF
+
+        docker compose \
+            --env-file "${ENV_FILE}" \
+            -f "${COMPOSE_FILE}" \
+            up -d
+
+        log "Rollback completed."
+
+    else
+
+        log "No previous image available."
+
+    fi
+
+    exit 1
+
+fi
+
+##############################################################################
 # Show Status
 ##############################################################################
 
@@ -166,6 +242,22 @@ docker compose \
     --env-file "${ENV_FILE}" \
     -f "${COMPOSE_FILE}" \
     ps
+
+##############################################################################
+# Cleanup
+##############################################################################
+
+log "Cleaning Docker"
+
+docker image prune -af || true
+
+##############################################################################
+# Finished
+##############################################################################
+
+log "Deployment completed successfully"
+
+
 
 ##############################################################################
 # Cleanup
