@@ -25,6 +25,7 @@ jobs:
       TF_VAR_aws_region: ${{ vars.TF_VAR_AWS_REGION }}
       TF_VAR_vpc_cidr: ${{ vars.VPC_CIDR }}
       TF_VAR_subnet_cidr: ${{ vars.SUBNET_CIDR }}
+      TF_VAR_notification_email: ${{ secrets.TF_VAR_notification_email }}
 
       TF_VAR_tags: >
         {

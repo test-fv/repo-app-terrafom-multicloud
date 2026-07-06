@@ -30,6 +30,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
 
   }
 
+  alarm_actions = var.alarm_actions
+  
   tags = var.tags
 
 }
@@ -41,8 +43,8 @@ resource "aws_cloudwatch_metric_alarm" "cpu_high" {
 resource "aws_cloudwatch_metric_alarm" "status_check_failed" {
 
   alarm_name = "${var.name_prefix}-status-check"
-
-  alarm_description = "EC2 status checks failed."
+  
+  alarm_actions = var.alarm_actions
 
   namespace = "AWS/EC2"
 
@@ -65,6 +67,8 @@ resource "aws_cloudwatch_metric_alarm" "status_check_failed" {
     InstanceId = var.instance_id
 
   }
+
+  alarm_description = "EC2 status checks failed."
 
   tags = var.tags
 

@@ -66,4 +66,22 @@ module "monitoring" {
 
   tags = var.tags
 
+  alarm_actions = [
+
+    module.monitoring_alerts.sns_topic_arn
+
+  ]
+
+}
+
+module "monitoring_alerts" {
+
+  source = "../../../providers/aws/monitoring-alerts"
+
+  name_prefix = var.name_prefix
+
+  notification_email = var.notification_email
+
+  tags = var.tags
+
 }

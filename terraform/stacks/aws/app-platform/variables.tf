@@ -53,3 +53,16 @@ variable "tags" {
   type = map(string)
 
 }
+
+############################################################
+# Notifications
+############################################################
+
+variable "notification_email" {
+
+  description = "Email that receives CloudWatch alerts."
+
+  type = string
+
+}
+
