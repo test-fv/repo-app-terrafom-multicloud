@@ -278,6 +278,12 @@ cp -R \
 
 chmod +x "${RUNTIME_HOME}/deploy.sh"
 
+[[ -f "${RUNTIME_HOME}/rollback.sh" ]] && \
+chmod +x "${RUNTIME_HOME}/rollback.sh"
+
+[[ -f "${RUNTIME_HOME}/status.sh" ]] && \
+chmod +x "${RUNTIME_HOME}/status.sh"
+
 success "Runtime installed."
 
 ##############################################################################

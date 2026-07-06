@@ -134,6 +134,7 @@ jobs:
           cp contracts/runtime/deploy.sh artifact/runtime/
           cp contracts/runtime/compose.yaml artifact/runtime/
           cp contracts/runtime/aws.sh artifact/runtime/providers/
+          cp contracts/runtime/runtime.version artifact/runtime/
 
           if [[ -f contracts/runtime/azure.sh ]]; then
             cp contracts/runtime/azure.sh artifact/runtime/providers/

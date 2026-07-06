@@ -11,6 +11,39 @@
 set -Eeuo pipefail
 
 ##############################################################################
+# Deployment Lock
+##############################################################################
+
+LOCK_FILE="/opt/runtime/deploy.lock"
+
+cleanup() {
+
+    rm -f "${LOCK_FILE}"
+
+}
+
+trap cleanup EXIT
+
+if [[ -f "${LOCK_FILE}" ]]; then
+
+    echo
+    echo "=================================================="
+    echo "Another deployment is already running."
+    echo "=================================================="
+
+    exit 1
+
+fi
+
+cat > "${LOCK_FILE}" <<EOF
+Started At : $(date -u +"%Y-%m-%dT%H:%M:%SZ")
+User       : $(whoami)
+PID        : $$
+Image Tag  : ${IMAGE_TAG:-unknown}
+Host        : $(hostname)
+EOF
+
+##############################################################################
 # Runtime Layout
 ##############################################################################
 
