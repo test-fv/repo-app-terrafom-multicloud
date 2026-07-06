@@ -2,27 +2,42 @@
 
 set -Eeuo pipefail
 
-#########################################
+############################################################
 # Constants
-#########################################
+############################################################
 
 readonly APP_HOME="/opt/runtime"
-
-echo "==================================="
-echo "Provisioning AWS Runtime"
-echo "==================================="
+readonly CW_AGENT_DEB="/tmp/amazon-cloudwatch-agent.deb"
+readonly CW_CONFIG="/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json"
 
 export DEBIAN_FRONTEND=noninteractive
 
-#########################################
+############################################################
+# Logging
+############################################################
+
+log() {
+
+    echo
+    echo "=================================================="
+    echo "$1"
+    echo "=================================================="
+
+}
+
+log "Provisioning AWS Runtime"
+
+############################################################
 # Update OS
-#########################################
+############################################################
 
 apt-get update -y
 
-#########################################
+############################################################
 # Install Packages
-#########################################
+############################################################
+
+log "Installing packages"
 
 apt-get install -y \
     docker.io \
@@ -32,66 +47,68 @@ apt-get install -y \
     jq \
     awscli
 
-#########################################
+############################################################
 # Install CloudWatch Agent
-#########################################
+############################################################
 
-CW_AGENT_DEB="/tmp/amazon-cloudwatch-agent.deb"
+log "Installing CloudWatch Agent"
 
 curl -fsSL \
-  https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb \
-  -o "${CW_AGENT_DEB}"
+https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb \
+-o "$${CW_AGENT_DEB}"
 
-dpkg -i "${CW_AGENT_DEB}"
+dpkg -i "$${CW_AGENT_DEB}"
 
-rm -f "${CW_AGENT_DEB}"
+rm -f "$${CW_AGENT_DEB}"
 
-
-#########################################
+############################################################
 # CloudWatch Configuration
-#########################################
+############################################################
+
+log "Configuring CloudWatch Agent"
 
 mkdir -p /opt/aws/amazon-cloudwatch-agent/etc
 
-cat >/opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'EOF'
+cat > "$${CW_CONFIG}" <<'EOF'
 ${cloudwatch_config}
 EOF
 
-
-#########################################
+############################################################
 # Docker
-#########################################
+############################################################
+
+log "Configuring Docker"
 
 systemctl enable docker
 systemctl restart docker
 
-
-#########################################
-# CloudWatch Agent
-#########################################
+############################################################
+# CloudWatch Service
+############################################################
 
 systemctl enable amazon-cloudwatch-agent || true
 
-
-#########################################
-# Add Ubuntu User
-#########################################
+############################################################
+# Docker Permissions
+############################################################
 
 if ! groups ubuntu | grep -q docker; then
     usermod -aG docker ubuntu
 fi
 
-#########################################
-# Runtime folders
-#########################################
+############################################################
+# Runtime Folder
+############################################################
 
-mkdir -p "${APP_HOME}"
+log "Preparing runtime folder"
+
+mkdir -p "$${APP_HOME}"
 
 mkdir -p /usr/local/bin
 
-#########################################
-# Runtime launcher
-#########################################
+############################################################
+# Deploy Launcher
+############################################################
 
 cat >/usr/local/bin/deploy.sh <<'EOF'
 #!/bin/bash
@@ -105,36 +122,44 @@ EOF
 
 chmod +x /usr/local/bin/deploy.sh
 
-#########################################
-# Validate Installation
-#########################################
+############################################################
+# Validation
+############################################################
 
-echo "==================================="
-echo "Installed versions"
-echo "==================================="
+log "Installed versions"
 
 docker --version
-
 docker compose version
-
 aws --version
 
-#########################################
+############################################################
 # Ownership
-#########################################
+############################################################
 
-chown -R ubuntu:ubuntu "${APP_HOME}"
+chown -R ubuntu:ubuntu "$${APP_HOME}"
 
-#########################################
+############################################################
+# Start CloudWatch Agent
+############################################################
+
+log "Starting CloudWatch Agent"
+
+/opt/aws/amazon-cloudwatch-agent/bin/amazon-cloudwatch-agent-ctl \
+    -a fetch-config \
+    -m ec2 \
+    -c file:"$${CW_CONFIG}" \
+    -s
+
+############################################################
 # Cleanup
-#########################################
+############################################################
+
+log "Cleaning system"
 
 apt-get clean
 
-#########################################
+############################################################
 # Finished
-#########################################
+############################################################
 
-echo "==================================="
-echo "Provisioning completed successfully"
-echo "==================================="
+log "Provisioning completed successfully"
