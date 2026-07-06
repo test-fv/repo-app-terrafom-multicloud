@@ -30,6 +30,8 @@ COMPOSE_FILE="${RUNTIME_DIR}/compose.yaml"
 
 ENV_FILE="${RUNTIME_DIR}/.env"
 
+LAST_GOOD_ENV="${RUNTIME_DIR}/last-good.env"
+
 ##############################################################################
 # Logging
 ##############################################################################
@@ -186,7 +188,11 @@ while [[ ${ATTEMPT} -le ${MAX_ATTEMPTS} ]]; do
 
         DEPLOY_FAILED=false
 
+        cp "${ENV_FILE}" "${LAST_GOOD_ENV}"
+
         log "Health Check passed."
+
+        log "Stable version updated."
 
         break
 
