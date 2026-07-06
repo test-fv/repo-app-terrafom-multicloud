@@ -10,6 +10,24 @@
 set -Eeuo pipefail
 
 ##############################################################################
+# Runtime Version
+##############################################################################
+
+RUNTIME_VERSION_FILE="/opt/runtime/runtime.version"
+
+PROVIDER_VERSION="1.0.0"
+
+if [[ -f "${RUNTIME_VERSION_FILE}" ]]; then
+
+    RUNTIME_VERSION="$(cat "${RUNTIME_VERSION_FILE}")"
+
+else
+
+    RUNTIME_VERSION="unknown"
+
+fi
+
+##############################################################################
 # Required Variables
 ##############################################################################
 
@@ -82,9 +100,19 @@ if ! systemctl is-active --quiet docker; then
 
 fi
 
+
+
+
 ##############################################################################
 # Login to Amazon ECR
 ##############################################################################
+
+log "Runtime Information"
+
+echo "Runtime Version : ${RUNTIME_VERSION}"
+echo "Provider        : AWS"
+echo "Provider Ver.   : ${PROVIDER_VERSION}"
+echo "Docker Host     : $(hostname)"
 
 log "Authenticating with Amazon ECR"
 
@@ -106,23 +134,6 @@ REPOSITORY_NAME=${REPOSITORY_NAME}
 IMAGE_TAG=${IMAGE_TAG}
 EOF
 
-##############################################################################
-# Backup Current Image
-##############################################################################
-
-CURRENT_IMAGE=""
-
-if docker ps -a --format '{{.Names}}' | grep -q '^app$'; then
-
-    CURRENT_IMAGE=$(docker inspect \
-        --format='{{.Config.Image}}' \
-        app)
-
-    log "Current deployed image"
-
-    echo "${CURRENT_IMAGE}"
-
-fi
 
 ##############################################################################
 # Pull Images
@@ -210,48 +221,16 @@ if [[ "${DEPLOY_FAILED}" == "true" ]]; then
 
 fi
 
+
 ##############################################################################
 # Rollback
 ##############################################################################
 
-if [[ "${DEPLOY_FAILED:-false}" == "true" ]]; then
+if [[ "${DEPLOY_FAILED}" == "true" ]]; then
 
     log "Deployment failed"
 
-    if [[ -n "${CURRENT_IMAGE}" ]]; then
-
-log "Rolling back previous version"
-
-PREVIOUS_TAG="${CURRENT_IMAGE##*:}"
-
-cat > "${ENV_FILE}" <<EOF
-REGISTRY_SERVER=${REGISTRY_SERVER}
-REPOSITORY_NAME=${REPOSITORY_NAME}
-IMAGE_TAG=${PREVIOUS_TAG}
-EOF
-
-log "Stopping failed deployment"
-
-docker compose \
-    --env-file "${ENV_FILE}" \
-    -f "${COMPOSE_FILE}" \
-    down \
-    --remove-orphans || true
-
-log "Restoring previous version"
-
-docker compose \
-    --env-file "${ENV_FILE}" \
-    -f "${COMPOSE_FILE}" \
-    up -d
-
-        log "Rollback completed."
-
-    else
-
-        log "No previous image available."
-
-    fi
+    bash "${RUNTIME_DIR}/scripts/rollback.sh"
 
     exit 1
 
@@ -282,7 +261,23 @@ docker image prune -af || true
 
 log "Deployment completed successfully"
 
+##############################################################################
+# Deployment Metadata
+##############################################################################
 
+log "Writing deployment metadata"
+
+cat > "${RUNTIME_DIR}/version.json" <<EOF
+{
+  "application": "${REPOSITORY_NAME}",
+  "provider": "aws",
+  "registry": "${REGISTRY_SERVER}",
+  "image": "${REGISTRY_SERVER}/${REPOSITORY_NAME}:${IMAGE_TAG}",
+  "tag": "${IMAGE_TAG}",
+  "runtime_version": "1.0.0",
+  "deployed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+}
+EOF
 
 ##############################################################################
 # Cleanup

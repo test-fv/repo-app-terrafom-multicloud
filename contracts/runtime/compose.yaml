@@ -31,6 +31,8 @@ services:
 
       start_period: 30s
 
+    depends_on: []
+
     logging:
 
       driver: json-file
