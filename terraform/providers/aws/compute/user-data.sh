@@ -30,9 +30,7 @@ apt-get install -y \
     curl \
     unzip \
     jq \
-    awscli \
-    amazon-cloudwatch-agent
-
+    awscli
 
 
 #########################################
