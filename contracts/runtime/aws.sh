@@ -170,6 +170,60 @@ docker compose \
     up -d
 
 ##############################################################################
+# Wait Docker Health
+##############################################################################
+
+log "Waiting Docker Health"
+
+MAX_HEALTH_ATTEMPTS=30
+HEALTH_ATTEMPT=1
+
+while [[ ${HEALTH_ATTEMPT} -le ${MAX_HEALTH_ATTEMPTS} ]]; do
+
+    STATUS=$(
+        docker inspect \
+            --format='{{.State.Health.Status}}' \
+            app 2>/dev/null || echo "starting"
+    )
+
+    echo "Docker Health ${HEALTH_ATTEMPT}/${MAX_HEALTH_ATTEMPTS} -> ${STATUS}"
+
+    case "${STATUS}" in
+
+        healthy)
+
+            log "Container is healthy."
+
+            break
+            ;;
+
+        unhealthy)
+
+            log "Container became unhealthy."
+
+            DEPLOY_FAILED=true
+
+            break
+            ;;
+
+    esac
+
+    sleep 5
+
+    ((HEALTH_ATTEMPT++))
+
+done
+
+if [[ ${HEALTH_ATTEMPT} -gt ${MAX_HEALTH_ATTEMPTS} ]]; then
+
+    log "Container never became healthy."
+
+    DEPLOY_FAILED=true
+
+fi
+
+
+##############################################################################
 # Wait Application
 ##############################################################################
 
