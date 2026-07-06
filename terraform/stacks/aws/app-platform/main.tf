@@ -55,3 +55,15 @@ module "compute" {
   tags = var.tags
 
 }
+
+module "monitoring" {
+
+  source = "../../../providers/aws/monitoring"
+
+  instance_id = module.compute.instance_id
+
+  name_prefix = var.name_prefix
+
+  tags = var.tags
+
+}
