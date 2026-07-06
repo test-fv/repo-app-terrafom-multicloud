@@ -32,6 +32,19 @@ apt-get install -y \
     jq \
     awscli
 
+#########################################
+# Install CloudWatch Agent
+#########################################
+
+CW_AGENT_DEB="/tmp/amazon-cloudwatch-agent.deb"
+
+curl -fsSL \
+  https://amazoncloudwatch-agent.s3.amazonaws.com/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb \
+  -o "${CW_AGENT_DEB}"
+
+dpkg -i "${CW_AGENT_DEB}"
+
+rm -f "${CW_AGENT_DEB}"
 
 #########################################
 # Docker
