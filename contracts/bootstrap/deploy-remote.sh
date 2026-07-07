@@ -452,6 +452,10 @@ export RUNTIME_BUCKET_NAME
 
 bash "${RUNTIME_HOME}/deploy.sh"
 
+echo "==============================="
+echo "RUNTIME_BUCKET_NAME=${RUNTIME_BUCKET_NAME:-EMPTY}"
+echo "==============================="
+
 success "Runtime deployment finished."
 
 ##############################################################################
