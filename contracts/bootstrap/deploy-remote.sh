@@ -240,6 +240,10 @@ log "Extracting runtime artifact..."
 tar -xzf "${ARTIFACT}" \
     -C "${EXTRACT_DIR}"
 
+echo "========== EXTRACTED =========="
+find "${EXTRACT_DIR}" -maxdepth 4
+echo "==============================="    
+
 ##############################################################################
 # Validate Runtime Structure
 ##############################################################################
@@ -296,6 +300,10 @@ mkdir -p "${RUNTIME_HOME}"
     exit 1
 
 }
+
+echo "========== RUNTIME DIR =========="
+ls -lah "${EXTRACT_DIR}/artifact/runtime"
+echo "================================"
 
 cp -a \
     "${EXTRACT_DIR}/artifact/runtime/." \
