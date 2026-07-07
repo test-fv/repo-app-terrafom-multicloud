@@ -151,31 +151,59 @@ resource "aws_iam_policy" "runtime_bucket" {
 
     Version = "2012-10-17"
 
-    Statement = [
+Statement = [
 
-      {
+  ####################################################################
+  # Read Runtime
+  ####################################################################
 
-        Sid = "RuntimeBucket"
+  {
 
-        Effect = "Allow"
+    Sid = "RuntimeRead"
 
-        Action = [
+    Effect = "Allow"
 
-          "s3:GetObject",
-          "s3:ListBucket"
+    Action = [
 
-        ]
-
-        Resource = [
-
-          aws_s3_bucket.runtime.arn,
-          "${aws_s3_bucket.runtime.arn}/*"
-
-        ]
-
-      }
+      "s3:GetObject",
+      "s3:ListBucket"
 
     ]
+
+    Resource = [
+
+      aws_s3_bucket.runtime.arn,
+      "${aws_s3_bucket.runtime.arn}/*"
+
+    ]
+
+  },
+
+  ####################################################################
+  # Deployment History
+  ####################################################################
+
+  {
+
+    Sid = "RuntimeHistory"
+
+    Effect = "Allow"
+
+    Action = [
+
+      "s3:PutObject"
+
+    ]
+
+    Resource = [
+
+      "${aws_s3_bucket.runtime.arn}/history/*"
+
+    ]
+
+  }
+
+]
 
   })
 

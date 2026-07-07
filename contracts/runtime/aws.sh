@@ -169,11 +169,14 @@ docker compose \
     -f "${COMPOSE_FILE}" \
     up -d
 
+
 ##############################################################################
 # Wait Docker Health
 ##############################################################################
 
 log "Waiting Docker Health"
+
+DEPLOY_FAILED=false
 
 MAX_HEALTH_ATTEMPTS=30
 HEALTH_ATTEMPT=1
@@ -222,67 +225,19 @@ if [[ ${HEALTH_ATTEMPT} -gt ${MAX_HEALTH_ATTEMPTS} ]]; then
 
 fi
 
-
-##############################################################################
-# Wait Application
-##############################################################################
-
-log "Waiting application startup"
-
-HEALTH_URL="http://localhost/health"
-
-MAX_ATTEMPTS=24
-ATTEMPT=1
-
-DEPLOY_FAILED=true
-
-while [[ ${ATTEMPT} -le ${MAX_ATTEMPTS} ]]; do
-
-    HTTP_STATUS=$(
-        curl \
-            -s \
-            -o /dev/null \
-            -w "%{http_code}" \
-            "${HEALTH_URL}" \
-        || true
-    )
-
-    echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS} -> HTTP ${HTTP_STATUS}"
-
-    if [[ "${HTTP_STATUS}" == "200" ]]; then
-
-        DEPLOY_FAILED=false
-
-        cp "${ENV_FILE}" "${LAST_GOOD_ENV}"
-
-        log "Health Check passed."
-
-        log "Stable version updated."
-
-        break
-
-    fi
-
-    sleep 5
-
-    ((ATTEMPT++))
-
-done
-
-if [[ "${DEPLOY_FAILED}" == "true" ]]; then
-
-    log "Health Check FAILED."
-
-fi
-
-
 ##############################################################################
 # Rollback
 ##############################################################################
 
-if [[ "${DEPLOY_FAILED}" == "true" ]]; then
+if [[ "${DEPLOY_FAILED:-false}" == "true" ]]; then
 
     log "Deployment failed"
+
+    log "Writing failed deployment history"
+
+    bash "${RUNTIME_DIR}/scripts/write-history.sh" \
+        FAILED \
+        true || true
 
     bash "${RUNTIME_DIR}/scripts/rollback.sh"
 
@@ -302,20 +257,6 @@ docker compose \
     ps
 
 ##############################################################################
-# Cleanup
-##############################################################################
-
-log "Cleaning Docker"
-
-docker image prune -af || true
-
-##############################################################################
-# Finished
-##############################################################################
-
-log "Deployment completed successfully"
-
-##############################################################################
 # Deployment Metadata
 ##############################################################################
 
@@ -332,6 +273,17 @@ cat > "${RUNTIME_DIR}/version.json" <<EOF
   "deployed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 }
 EOF
+
+##############################################################################
+# Deployment History
+##############################################################################
+
+log "Writing deployment history"
+
+bash "${RUNTIME_DIR}/scripts/write-history.sh" \
+    SUCCESS \
+    false
+
 
 ##############################################################################
 # Cleanup
