@@ -21,7 +21,11 @@ RUN mvn -B clean package -DskipTests
 # =========================
 FROM eclipse-temurin:17-jre-alpine
 
+# Herramienta necesaria para el HEALTHCHECK
+RUN apk add --no-cache wget
+
 ENV JAVA_OPTS="-Xms256m -Xmx512m"
+
 WORKDIR /app
 
 # Copiamos solo el JAR final
@@ -31,6 +35,22 @@ EXPOSE 8080
 
 # Usuario no root (seguridad)
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
 USER appuser
+
+##############################################################################
+# Health Check
+##############################################################################
+
+HEALTHCHECK \
+  --interval=10s \
+  --timeout=5s \
+  --start-period=20s \
+  --retries=12 \
+  CMD wget -qO- http://127.0.0.1:8080/health >/dev/null || exit 1
+
+##############################################################################
+# Start Application
+##############################################################################
 
 ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]

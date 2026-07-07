@@ -6,11 +6,13 @@ set -Eeuo pipefail
 # Deployment History
 ##############################################################################
 
-: "${RUNTIME_DIR:?}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+RUNTIME_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 : "${REGISTRY_SERVER:?}"
 : "${REPOSITORY_NAME:?}"
 : "${IMAGE_TAG:?}"
 : "${AWS_REGION:?}"
+: "${RUNTIME_BUCKET_NAME:?}"
 
 STATUS="${1:-SUCCESS}"
 ROLLBACK="${2:-false}"
