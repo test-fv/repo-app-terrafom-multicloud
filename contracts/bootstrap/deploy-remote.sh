@@ -448,8 +448,6 @@ export REPOSITORY_NAME
 
 export IMAGE_TAG
 
-export RUNTIME_BUCKET_NAME="${RUNTIME_BUCKET_NAME}"
-
 bash "${RUNTIME_HOME}/deploy.sh"
 
 success "Runtime deployment finished."
