@@ -302,6 +302,8 @@ cp "${ENV_FILE}" "${LAST_GOOD_ENV}"
 
 log "Writing deployment history"
 
+echo "Bucket desde aws.sh = ${RUNTIME_BUCKET_NAME:-VACIO}"
+
 bash "${RUNTIME_DIR}/scripts/write-history.sh" \
     SUCCESS \
     false
