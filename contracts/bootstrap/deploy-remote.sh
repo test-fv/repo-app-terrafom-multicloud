@@ -276,6 +276,10 @@ rm -rf "${RUNTIME_HOME}"
 
 mkdir -p "${RUNTIME_HOME}"
 
+cp -a \
+    "${EXTRACT_DIR}/artifact/runtime/." \
+    "${RUNTIME_HOME}/"
+
 ##############################################################################
 # Validate Runtime Layout
 ##############################################################################
@@ -300,14 +304,6 @@ mkdir -p "${RUNTIME_HOME}"
     exit 1
 
 }
-
-echo "========== RUNTIME DIR =========="
-ls -lah "${EXTRACT_DIR}/artifact/runtime"
-echo "================================"
-
-cp -a \
-    "${EXTRACT_DIR}/artifact/runtime/." \
-    "${RUNTIME_HOME}/"
 
 chmod +x "${RUNTIME_HOME}/deploy.sh"
 
