@@ -221,6 +221,20 @@ if [[ ${HEALTH_ATTEMPT} -gt ${MAX_HEALTH_ATTEMPTS} ]]; then
 
     log "Container never became healthy."
 
+
+    echo
+    echo "========== docker ps =========="
+    docker ps -a
+    echo
+
+    echo "========== docker inspect =========="
+    docker inspect app || true
+    echo
+
+    echo "========== docker logs =========="
+    docker logs app || true
+    echo
+
     DEPLOY_FAILED=true
 
 fi
