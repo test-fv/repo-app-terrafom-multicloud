@@ -272,14 +272,42 @@ rm -rf "${RUNTIME_HOME}"
 
 mkdir -p "${RUNTIME_HOME}"
 
-cp -R \
-    "${EXTRACT_DIR}/artifact/runtime/"* \
+##############################################################################
+# Validate Runtime Layout
+##############################################################################
+
+[[ -f "${RUNTIME_HOME}/deploy.sh" ]] || {
+
+    error "deploy.sh missing after installation."
+    exit 1
+
+}
+
+[[ -f "${RUNTIME_HOME}/scripts/write-history.sh" ]] || {
+
+    error "write-history.sh missing after installation."
+    exit 1
+
+}
+
+[[ -f "${RUNTIME_HOME}/scripts/rollback.sh" ]] || {
+
+    error "rollback.sh missing after installation."
+    exit 1
+
+}
+
+cp -a \
+    "${EXTRACT_DIR}/artifact/runtime/." \
     "${RUNTIME_HOME}/"
 
 chmod +x "${RUNTIME_HOME}/deploy.sh"
 
-[[ -f "${RUNTIME_HOME}/rollback.sh" ]] && \
-chmod +x "${RUNTIME_HOME}/rollback.sh"
+[[ -f "${RUNTIME_HOME}/scripts/rollback.sh" ]] && \
+chmod +x "${RUNTIME_HOME}/scripts/rollback.sh"
+
+[[ -f "${RUNTIME_HOME}/scripts/write-history.sh" ]] && \
+chmod +x "${RUNTIME_HOME}/scripts/write-history.sh"
 
 [[ -f "${RUNTIME_HOME}/status.sh" ]] && \
 chmod +x "${RUNTIME_HOME}/status.sh"
@@ -415,6 +443,8 @@ export REGISTRY_SERVER
 export REPOSITORY_NAME
 
 export IMAGE_TAG
+
+export RUNTIME_BUCKET_NAME="${RUNTIME_BUCKET_NAME}"
 
 bash "${RUNTIME_HOME}/deploy.sh"
 

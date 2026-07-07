@@ -115,8 +115,8 @@ jobs:
           rm -rf artifact
 
           mkdir -p artifact/runtime
-
           mkdir -p artifact/runtime/providers
+          mkdir -p artifact/runtime/scripts
 
           ##########################################################
           # Validate Runtime
@@ -139,6 +139,8 @@ jobs:
           if [[ -f contracts/runtime/azure.sh ]]; then
             cp contracts/runtime/azure.sh artifact/runtime/providers/
           fi
+
+          cp -r contracts/runtime/scripts/* artifact/runtime/scripts/
 
           ##########################################################
           # Package
