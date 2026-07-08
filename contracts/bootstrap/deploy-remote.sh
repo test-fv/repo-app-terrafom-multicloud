@@ -448,9 +448,11 @@ export REPOSITORY_NAME
 
 export IMAGE_TAG
 
-export RUNTIME_BUCKET_NAME
+export RUNTIME_BUCKET_NAME="${RUNTIME_BUCKET}"
+
 
 bash "${RUNTIME_HOME}/deploy.sh"
+
 
 echo "==============================="
 echo "RUNTIME_BUCKET_NAME=${RUNTIME_BUCKET_NAME:-EMPTY}"
