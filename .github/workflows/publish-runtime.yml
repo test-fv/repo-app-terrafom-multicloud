@@ -117,6 +117,7 @@ jobs:
           mkdir -p artifact/runtime
           mkdir -p artifact/runtime/providers
           mkdir -p artifact/runtime/scripts
+          mkdir -p artifact/runtime/tests
 
           ##########################################################
           # Validate Runtime

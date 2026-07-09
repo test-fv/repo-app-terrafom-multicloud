@@ -238,7 +238,6 @@ if [[ ${HEALTH_ATTEMPT} -gt ${MAX_HEALTH_ATTEMPTS} ]]; then
     DEPLOY_FAILED=true
 
 fi
-
 ##############################################################################
 # Rollback
 ##############################################################################
@@ -260,6 +259,14 @@ if [[ "${DEPLOY_FAILED:-false}" == "true" ]]; then
 fi
 
 ##############################################################################
+# Enterprise Runtime Validation
+##############################################################################
+
+log "Running Enterprise Runtime Tests"
+
+bash "${RUNTIME_DIR}/tests/run-all.sh"
+
+##############################################################################
 # Show Status
 ##############################################################################
 
@@ -269,24 +276,6 @@ docker compose \
     --env-file "${ENV_FILE}" \
     -f "${COMPOSE_FILE}" \
     ps
-
-##############################################################################
-# Deployment Metadata
-##############################################################################
-
-log "Writing deployment metadata"
-
-cat > "${RUNTIME_DIR}/version.json" <<EOF
-{
-  "application": "${REPOSITORY_NAME}",
-  "provider": "aws",
-  "registry": "${REGISTRY_SERVER}",
-  "image": "${REGISTRY_SERVER}/${REPOSITORY_NAME}:${IMAGE_TAG}",
-  "tag": "${IMAGE_TAG}",
-  "runtime_version": "1.0.0",
-  "deployed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
-}
-EOF
 
 ##############################################################################
 # Save Last Good Deployment
@@ -308,6 +297,13 @@ bash "${RUNTIME_DIR}/scripts/write-history.sh" \
     SUCCESS \
     false
 
+##############################################################################
+# Runtime Validation
+##############################################################################
+
+log "Executing runtime validation"
+
+bash "${RUNTIME_DIR}/tests/run-all.sh"
 
 ##############################################################################
 # Cleanup
