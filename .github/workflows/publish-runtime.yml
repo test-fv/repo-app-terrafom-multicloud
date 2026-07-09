@@ -144,6 +144,17 @@ jobs:
           cp -r contracts/runtime/scripts/* artifact/runtime/scripts/
 
           ##########################################################
+          # Runtime Tests
+          ##########################################################
+
+          cp -r contracts/runtime/tests/* artifact/runtime/tests/
+
+
+          echo "========== RUNTIME CONTENT =========="
+          find artifact/runtime
+          echo "===================================="
+
+          ##########################################################
           # Package
           ##########################################################
 
@@ -152,7 +163,7 @@ jobs:
             --group=0 \
             -czf deployment-artifact.tar.gz \
             artifact/runtime
-
+            
           sha256sum deployment-artifact.tar.gz \
             > deployment-artifact.tar.gz.sha256
 
