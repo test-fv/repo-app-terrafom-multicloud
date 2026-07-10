@@ -50,7 +50,7 @@ run_test() {
 
     printf "  %-45s" "${TEST_NAME}"
 
-    ((TOTAL++))
+    TOTAL=$((TOTAL+1))
 
     echo "Executing: ${TEST_FILE}"
 
@@ -58,14 +58,13 @@ run_test() {
 
         printf "${GREEN}PASS${RESET}\n"
 
-        ((PASS++))
+        ((++PASS))
 
     else
 
         printf "${RED}FAIL${RESET}\n"
 
-        ((FAIL++))
-
+        ((++FAIL))
     fi
 
 }
