@@ -43,15 +43,11 @@ cat "${STATUS_SCRIPT}"
 # Execute Script
 ##############################################################################
 
-"${STATUS_SCRIPT}"
+OUTPUT="$("${STATUS_SCRIPT}")"
 
-echo "Runtime status executed"
-
-
-echo "========== runtime-status.sh =========="
+echo "===================="
 echo "${OUTPUT}"
-echo "======================================="
-
+echo "===================="
 
 ##############################################################################
 # Validate Runtime Version
