@@ -48,7 +48,7 @@ run_test() {
 
     ((TOTAL++))
 
-    if bash "${TEST_FILE}" >/dev/null 2>&1; then
+    if bash -x "${TEST_FILE}"; then
 
         printf "${GREEN}PASS${RESET}\n"
 
