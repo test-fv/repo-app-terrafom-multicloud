@@ -8,6 +8,10 @@
 
 set -Eeuo pipefail
 
+echo "#############################################"
+echo "RUN-ALL VERSION 2"
+echo "#############################################"
+
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 PASS=0
@@ -47,6 +51,8 @@ run_test() {
     printf "  %-45s" "${TEST_NAME}"
 
     ((TOTAL++))
+
+    echo "Executing: ${TEST_FILE}"
 
     if bash -x "${TEST_FILE}"; then
 
