@@ -8,7 +8,7 @@
 ##############################################################################
 
 set -Eeuo pipefail
-
+set -x
 RUNTIME_DIR="/opt/runtime"
 
 echo
@@ -30,11 +30,22 @@ if [[ ! -f "${STATUS_SCRIPT}" ]]; then
 
 fi
 
+
+echo "STATUS_SCRIPT=${STATUS_SCRIPT}"
+
+ls -l "${STATUS_SCRIPT}"
+
+cat "${STATUS_SCRIPT}"
+
+
+
 ##############################################################################
 # Execute Script
 ##############################################################################
 
-OUTPUT="$("${STATUS_SCRIPT}")"
+"${STATUS_SCRIPT}"
+
+echo "Runtime status executed"
 
 
 echo "========== runtime-status.sh =========="
