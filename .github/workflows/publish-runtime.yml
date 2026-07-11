@@ -150,6 +150,13 @@ jobs:
           cp -r contracts/runtime/tests/* artifact/runtime/tests/
 
 
+          echo "=============================="
+          echo "TESTS COPIED"
+          echo "=============================="
+
+          find artifact/runtime/tests -type f
+
+
           echo "========== RUNTIME CONTENT =========="
           find artifact/runtime
           echo "===================================="

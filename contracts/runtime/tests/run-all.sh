@@ -52,23 +52,30 @@ run_test() {
 
     TOTAL=$((TOTAL+1))
 
-    echo "Executing: ${TEST_FILE}"
+    echo
+    echo "========================================"
+    echo "FILE = ${TEST_FILE}"
+    ls -l "${TEST_FILE}" || true
+    echo "========================================"
 
-    if bash -x "${TEST_FILE}"; then
+    bash -x "${TEST_FILE}"
+
+    RESULT=$?
+
+    echo "RESULT=${RESULT}"
+
+    if [[ ${RESULT} -eq 0 ]]; then
 
         printf "${GREEN}PASS${RESET}\n"
-
         ((++PASS))
 
     else
 
         printf "${RED}FAIL${RESET}\n"
-
         ((++FAIL))
+
     fi
-
 }
-
 ##############################################################################
 # Discover Categories
 ##############################################################################
