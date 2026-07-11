@@ -75,6 +75,7 @@ log() {
 
 }
 
+
 ##############################################################################
 # Validate Dependencies
 ##############################################################################
@@ -304,6 +305,17 @@ bash "${RUNTIME_DIR}/scripts/write-history.sh" \
 log "Executing runtime validation"
 
 bash "${RUNTIME_DIR}/tests/run-all.sh"
+
+
+
+##############################################################################
+# Make Runtime Scripts Executable
+##############################################################################
+
+chmod +x "${RUNTIME_DIR}/scripts/"*.sh
+chmod +x "${RUNTIME_DIR}/tests/run-all.sh"
+
+find "${RUNTIME_DIR}/tests" -name "*.sh" -exec chmod +x {} \;
 
 ##############################################################################
 # Cleanup

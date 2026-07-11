@@ -43,7 +43,7 @@ cat "${STATUS_SCRIPT}"
 # Execute Script
 ##############################################################################
 
-OUTPUT="$("${STATUS_SCRIPT}")"
+OUTPUT="$(bash "${STATUS_SCRIPT}")"
 
 echo "===================="
 echo "${OUTPUT}"
