@@ -62,12 +62,12 @@ echo "${OUTPUT}" | grep -q "Runtime Version" || {
 }
 
 ##############################################################################
-# Validate Deployment
+# Validate Deployment Section
 ##############################################################################
 
-echo "${OUTPUT}" | grep -q "Application" || {
+echo "${OUTPUT}" | grep -q "Container" || {
 
-    echo "[FAIL] Application information missing."
+    echo "[FAIL] Container information missing."
 
     exit 1
 
