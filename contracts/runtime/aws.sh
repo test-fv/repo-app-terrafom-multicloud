@@ -18,13 +18,9 @@ RUNTIME_VERSION_FILE="/opt/runtime/runtime.version"
 PROVIDER_VERSION="1.0.0"
 
 if [[ -f "${RUNTIME_VERSION_FILE}" ]]; then
-
     RUNTIME_VERSION="$(cat "${RUNTIME_VERSION_FILE}")"
-
 else
-
     RUNTIME_VERSION="unknown"
-
 fi
 
 ##############################################################################
@@ -75,19 +71,24 @@ log() {
 
 }
 
-
 ##############################################################################
 # Validate Dependencies
 ##############################################################################
 
-command -v docker >/dev/null \
-    || { echo "Docker is not installed."; exit 1; }
+command -v docker >/dev/null || {
+    echo "Docker is not installed."
+    exit 1
+}
 
-command -v aws >/dev/null \
-    || { echo "AWS CLI is not installed."; exit 1; }
+command -v aws >/dev/null || {
+    echo "AWS CLI is not installed."
+    exit 1
+}
 
-docker compose version >/dev/null \
-    || { echo "Docker Compose V2 is not installed."; exit 1; }
+docker compose version >/dev/null || {
+    echo "Docker Compose V2 is not installed."
+    exit 1
+}
 
 ##############################################################################
 # Ensure Docker
@@ -100,9 +101,6 @@ if ! systemctl is-active --quiet docker; then
     sudo systemctl start docker
 
 fi
-
-
-
 
 ##############################################################################
 # Login to Amazon ECR
@@ -118,8 +116,8 @@ echo "Docker Host     : $(hostname)"
 log "Authenticating with Amazon ECR"
 
 aws ecr get-login-password \
-    --region "${AWS_REGION}" \
-| docker login \
+    --region "${AWS_REGION}" |
+docker login \
     --username AWS \
     --password-stdin "${REGISTRY_SERVER}"
 
@@ -134,7 +132,6 @@ REGISTRY_SERVER=${REGISTRY_SERVER}
 REPOSITORY_NAME=${REPOSITORY_NAME}
 IMAGE_TAG=${IMAGE_TAG}
 EOF
-
 
 ##############################################################################
 # Pull Images
@@ -170,7 +167,6 @@ docker compose \
     -f "${COMPOSE_FILE}" \
     up -d
 
-
 ##############################################################################
 # Wait Docker Health
 ##############################################################################
@@ -203,8 +199,6 @@ while [[ ${HEALTH_ATTEMPT} -le ${MAX_HEALTH_ATTEMPTS} ]]; do
 
         unhealthy)
 
-            log "Container became unhealthy."
-
             DEPLOY_FAILED=true
 
             break
@@ -220,44 +214,41 @@ done
 
 if [[ ${HEALTH_ATTEMPT} -gt ${MAX_HEALTH_ATTEMPTS} ]]; then
 
-    log "Container never became healthy."
-
-
-    echo
-    echo "========== docker ps =========="
-    docker ps -a
-    echo
-
-    echo "========== docker inspect =========="
-    docker inspect app || true
-    echo
-
-    echo "========== docker logs =========="
-    docker logs app || true
-    echo
-
     DEPLOY_FAILED=true
 
 fi
+
 ##############################################################################
 # Rollback
 ##############################################################################
 
-if [[ "${DEPLOY_FAILED:-false}" == "true" ]]; then
+if [[ "${DEPLOY_FAILED}" == "true" ]]; then
 
-    log "Deployment failed"
-
-    log "Writing failed deployment history"
-
-    bash "${RUNTIME_DIR}/scripts/write-history.sh" \
-        FAILED \
-        true || true
+    bash "${RUNTIME_DIR}/scripts/write-history.sh" FAILED true || true
 
     bash "${RUNTIME_DIR}/scripts/rollback.sh"
 
     exit 1
 
 fi
+
+##############################################################################
+# Make Scripts Executable
+##############################################################################
+
+chmod +x "${RUNTIME_DIR}/scripts/"*.sh
+
+chmod +x "${RUNTIME_DIR}/tests/run-all.sh"
+
+find "${RUNTIME_DIR}/tests" -name "*.sh" -exec chmod +x {} \;
+
+##############################################################################
+# Save Last Good Deployment
+##############################################################################
+
+log "Saving last successful deployment"
+
+cp "${ENV_FILE}" "${LAST_GOOD_ENV}"
 
 ##############################################################################
 # Enterprise Runtime Validation
@@ -279,43 +270,12 @@ docker compose \
     ps
 
 ##############################################################################
-# Save Last Good Deployment
-##############################################################################
-
-log "Saving last successful deployment"
-
-cp "${ENV_FILE}" "${LAST_GOOD_ENV}"
-
-##############################################################################
 # Deployment History
 ##############################################################################
 
 log "Writing deployment history"
 
-echo "Bucket desde aws.sh = ${RUNTIME_BUCKET_NAME:-VACIO}"
-
-bash "${RUNTIME_DIR}/scripts/write-history.sh" \
-    SUCCESS \
-    false
-
-##############################################################################
-# Runtime Validation
-##############################################################################
-
-log "Executing runtime validation"
-
-bash "${RUNTIME_DIR}/tests/run-all.sh"
-
-
-
-##############################################################################
-# Make Runtime Scripts Executable
-##############################################################################
-
-chmod +x "${RUNTIME_DIR}/scripts/"*.sh
-chmod +x "${RUNTIME_DIR}/tests/run-all.sh"
-
-find "${RUNTIME_DIR}/tests" -name "*.sh" -exec chmod +x {} \;
+bash "${RUNTIME_DIR}/scripts/write-history.sh" SUCCESS false
 
 ##############################################################################
 # Cleanup
