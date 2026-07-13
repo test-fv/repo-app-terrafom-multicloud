@@ -128,6 +128,7 @@ docker login \
 log "Generating runtime environment"
 
 cat > "${ENV_FILE}" <<EOF
+AWS_REGION=${AWS_REGION}
 REGISTRY_SERVER=${REGISTRY_SERVER}
 REPOSITORY_NAME=${REPOSITORY_NAME}
 IMAGE_TAG=${IMAGE_TAG}
