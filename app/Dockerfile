@@ -58,4 +58,4 @@ HEALTHCHECK \
 # Start Application
 ##############################################################################
 
-ENTRYPOINT ["/app/start.sh"]
+ENTRYPOINT ["/start.sh"]
