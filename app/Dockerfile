@@ -1,4 +1,3 @@
-
 # =========================
 # Stage 1: Build
 # =========================
@@ -8,9 +7,10 @@ WORKDIR /build
 
 # Copiamos primero dependencias (mejora cache)
 COPY pom.xml .
+
 RUN mvn -B -e -q dependency:go-offline
 
-# Copiamos el código
+# Copiamos el código fuente
 COPY src ./src
 
 # Compilamos
@@ -29,15 +29,35 @@ ENV JAVA_OPTS="-Xms256m -Xmx512m"
 
 WORKDIR /app
 
-# Copiamos solo el JAR final
-COPY --from=build /build/target/*.jar app.jar
+##############################################################################
+# Application
+##############################################################################
 
-EXPOSE 8080
+COPY --from=build /build/target/*.jar /app/app.jar
 
-# Usuario no root
-RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+##############################################################################
+# Startup Script
+##############################################################################
+
+COPY start.sh /start.sh
+
+RUN chmod +x /start.sh
+
+##############################################################################
+# Non Root User
+##############################################################################
+
+RUN addgroup -S appgroup && \
+    adduser -S appuser -G appgroup && \
+    chown appuser:appgroup /app/app.jar /start.sh
 
 USER appuser
+
+##############################################################################
+# Network
+##############################################################################
+
+EXPOSE 8080
 
 ##############################################################################
 # Health Check
@@ -49,10 +69,6 @@ HEALTHCHECK \
   --start-period=20s \
   --retries=12 \
   CMD wget -qO- http://127.0.0.1:8080/health >/dev/null || exit 1
-
-##############################################################################
-# Start Application
-##############################################################################
 
 ##############################################################################
 # Start Application
