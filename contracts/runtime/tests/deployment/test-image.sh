@@ -9,6 +9,8 @@
 
 set -Eeuo pipefail
 
+DOCKER="sudo docker"
+
 CONTAINER_NAME="app"
 RUNTIME_DIR="/opt/runtime"
 ENV_FILE="${RUNTIME_DIR}/.env"
@@ -46,7 +48,7 @@ EXPECTED_IMAGE="${REGISTRY_SERVER}/${REPOSITORY_NAME}:${IMAGE_TAG}"
 # Validate Container Exists
 ##############################################################################
 
-if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+if ! ${DOCKER} ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
 
     echo "[FAIL] Application container is not running."
 
@@ -59,7 +61,7 @@ fi
 ##############################################################################
 
 CURRENT_IMAGE=$(
-docker inspect \
+${DOCKER} inspect \
     --format='{{.Config.Image}}' \
     "${CONTAINER_NAME}"
 )
