@@ -1,3 +1,4 @@
+
 # =========================
 # Stage 1: Build
 # =========================
@@ -33,7 +34,7 @@ COPY --from=build /build/target/*.jar app.jar
 
 EXPOSE 8080
 
-# Usuario no root (seguridad)
+# Usuario no root
 RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 USER appuser
@@ -53,4 +54,8 @@ HEALTHCHECK \
 # Start Application
 ##############################################################################
 
-ENTRYPOINT ["sh","-c","java $JAVA_OPTS -jar app.jar"]
+##############################################################################
+# Start Application
+##############################################################################
+
+ENTRYPOINT ["/app/start.sh"]

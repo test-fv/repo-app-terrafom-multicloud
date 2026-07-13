@@ -12,7 +12,7 @@ set -Eeuo pipefail
 CONTAINER_NAME="app"
 HEALTH_URL="http://localhost/health"
 
-MAX_ATTEMPTS=24
+MAX_ATTEMPTS=30
 SLEEP_SECONDS=5
 
 echo
@@ -24,9 +24,9 @@ echo "=============================================="
 # Validate Container Exists
 ##############################################################################
 
-if ! docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
+if ! docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
 
-    echo "[FAIL] Container does not exist."
+    echo "[FAIL] Container is not running."
 
     exit 1
 
@@ -44,15 +44,19 @@ docker inspect \
 
 if [[ "${STATUS}" != "healthy" ]]; then
 
-    echo "[FAIL] Initial container state is '${STATUS}'."
+    echo "[FAIL] Initial Health = ${STATUS}"
 
     exit 1
 
 fi
 
-echo "[INFO] Killing container..."
+##############################################################################
+# Simulate Runtime Crash
+##############################################################################
 
-docker kill "${CONTAINER_NAME}" >/dev/null
+echo "[INFO] Simulating application crash..."
+
+docker exec "${CONTAINER_NAME}" kill -9 1
 
 ##############################################################################
 # Wait Recovery
