@@ -42,6 +42,7 @@ set +a
 ##############################################################################
 
 REQUIRED_VARIABLES=(
+    AWS_REGION
     REGISTRY_SERVER
     REPOSITORY_NAME
     IMAGE_TAG
@@ -65,7 +66,7 @@ for VAR in "${REQUIRED_VARIABLES[@]}"; do
 
     else
 
-        echo "[PASS] ${VAR}=${VALUE}"
+        echo "[PASS] ${VAR} is defined"
 
     fi
 

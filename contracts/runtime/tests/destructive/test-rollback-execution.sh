@@ -2,134 +2,79 @@
 
 ##############################################################################
 #
-# Enterprise Runtime
-#
-# Automatic Rollback
+# Enterprise Runtime Validation
+# Rollback Execution Validation
 #
 ##############################################################################
 
 set -Eeuo pipefail
 
-##############################################################################
-# Runtime
-##############################################################################
-
 RUNTIME_DIR="/opt/runtime"
 
-COMPOSE_FILE="${RUNTIME_DIR}/compose.yaml"
-
+ROLLBACK_SCRIPT="${RUNTIME_DIR}/scripts/rollback.sh"
 LAST_GOOD_ENV="${RUNTIME_DIR}/last-good.env"
 
 CONTAINER_NAME="app"
-
 HEALTH_URL="http://localhost/health"
 
 MAX_ATTEMPTS=30
 SLEEP_SECONDS=5
 
-##############################################################################
-# Logging
-##############################################################################
-
-log() {
-
-    echo
-    echo "=================================================="
-    echo "$1"
-    echo "=================================================="
-
-}
+echo
+echo "=============================================="
+echo "Rollback Execution Validation"
+echo "=============================================="
 
 ##############################################################################
-# Validate Runtime Files
+# Validate Files
 ##############################################################################
 
 [[ -f "${LAST_GOOD_ENV}" ]] || {
-
-    log "Rollback aborted"
-
     echo "[FAIL] last-good.env not found."
-
     exit 1
-
 }
 
-[[ -f "${COMPOSE_FILE}" ]] || {
-
-    log "Rollback aborted"
-
-    echo "[FAIL] compose.yaml not found."
-
+[[ -x "${ROLLBACK_SCRIPT}" ]] || {
+    echo "[FAIL] rollback.sh not found or not executable."
     exit 1
-
 }
 
 ##############################################################################
-# Load Last Good Environment
+# Read Expected Image
 ##############################################################################
 
 set -a
 source "${LAST_GOOD_ENV}"
 set +a
 
-: "${REGISTRY_SERVER:?Missing REGISTRY_SERVER}"
-: "${REPOSITORY_NAME:?Missing REPOSITORY_NAME}"
-: "${IMAGE_TAG:?Missing IMAGE_TAG}"
-
 EXPECTED_IMAGE="${REGISTRY_SERVER}/${REPOSITORY_NAME}:${IMAGE_TAG}"
 
-##############################################################################
-# Validate Docker Compose Configuration
-##############################################################################
-
-log "Validating Docker Compose configuration"
-
-docker compose \
-    --env-file "${LAST_GOOD_ENV}" \
-    -f "${COMPOSE_FILE}" \
-    config >/dev/null
+echo "[INFO] Expected Image : ${EXPECTED_IMAGE}"
 
 ##############################################################################
-# Stop Failed Deployment
+# Execute Rollback
 ##############################################################################
 
-log "Stopping failed deployment"
+echo "[INFO] Executing rollback..."
 
-docker compose \
-    --env-file "${LAST_GOOD_ENV}" \
-    -f "${COMPOSE_FILE}" \
-    down \
-    --remove-orphans || true
+bash "${ROLLBACK_SCRIPT}"
 
 ##############################################################################
-# Restore Previous Stable Version
+# Wait Recovery
 ##############################################################################
-
-log "Restoring previous stable version"
-
-docker compose \
-    --env-file "${LAST_GOOD_ENV}" \
-    -f "${COMPOSE_FILE}" \
-    up -d
-
-##############################################################################
-# Wait Container Health
-##############################################################################
-
-log "Waiting for application health"
 
 ATTEMPT=1
 
 while [[ ${ATTEMPT} -le ${MAX_ATTEMPTS} ]]; do
 
     RUNNING=$(
-        docker inspect \
+        sudo docker inspect \
             --format='{{.State.Running}}' \
             "${CONTAINER_NAME}" 2>/dev/null || echo "false"
     )
 
     HEALTH=$(
-        docker inspect \
+        sudo docker inspect \
             --format='{{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' \
             "${CONTAINER_NAME}" 2>/dev/null || echo "none"
     )
@@ -137,9 +82,7 @@ while [[ ${ATTEMPT} -le ${MAX_ATTEMPTS} ]]; do
     echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS} -> Running=${RUNNING} Health=${HEALTH}"
 
     if [[ "${RUNNING}" == "true" && "${HEALTH}" == "healthy" ]]; then
-
         break
-
     fi
 
     sleep "${SLEEP_SECONDS}"
@@ -149,48 +92,38 @@ while [[ ${ATTEMPT} -le ${MAX_ATTEMPTS} ]]; do
 done
 
 ##############################################################################
-# Validate Container
+# Validate Runtime
 ##############################################################################
 
-if [[ "${RUNNING}" != "true" ]]; then
-
+[[ "${RUNNING}" == "true" ]] || {
     echo "[FAIL] Container is not running after rollback."
-
     exit 1
+}
 
-fi
-
-if [[ "${HEALTH}" != "healthy" ]]; then
-
-    echo "[FAIL] Container did not become healthy after rollback."
-
+[[ "${HEALTH}" == "healthy" ]] || {
+    echo "[FAIL] Container is unhealthy after rollback."
     exit 1
-
-fi
+}
 
 ##############################################################################
-# Validate Running Image
+# Validate Image
 ##############################################################################
 
 CURRENT_IMAGE=$(
-docker inspect \
+sudo docker inspect \
     --format='{{.Config.Image}}' \
     "${CONTAINER_NAME}"
 )
 
-echo "Expected Image : ${EXPECTED_IMAGE}"
-echo "Running  Image : ${CURRENT_IMAGE}"
+echo "[INFO] Current Image : ${CURRENT_IMAGE}"
 
-if [[ "${CURRENT_IMAGE}" != "${EXPECTED_IMAGE}" ]]; then
-
-    echo "[FAIL] Incorrect image restored."
-
+[[ "${CURRENT_IMAGE}" == "${EXPECTED_IMAGE}" ]] || {
+    echo "[FAIL] Rolled back image does not match last-good.env."
     exit 1
-
-fi
+}
 
 ##############################################################################
-# Validate Health Endpoint
+# Validate Endpoint
 ##############################################################################
 
 HTTP_CODE=$(
@@ -201,29 +134,15 @@ curl \
     "${HEALTH_URL}" || true
 )
 
-if [[ "${HTTP_CODE}" != "200" ]]; then
-
+[[ "${HTTP_CODE}" == "200" ]] || {
     echo "[FAIL] Health endpoint returned ${HTTP_CODE}"
-
     exit 1
-
-fi
-
-##############################################################################
-# Status
-##############################################################################
-
-log "Rollback status"
-
-docker compose \
-    --env-file "${LAST_GOOD_ENV}" \
-    -f "${COMPOSE_FILE}" \
-    ps
+}
 
 ##############################################################################
-# Finished
+# Success
 ##############################################################################
 
-log "Rollback completed successfully"
+echo "[PASS] Rollback Execution Validation"
 
 exit 0
